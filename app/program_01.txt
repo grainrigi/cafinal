@@ -1,0 +1,28 @@
+/********************************************************************************/
+/* sample MIPS program for CA                                                   */
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+
+integer j=0;
+initial begin
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`ADDI, 5'd0, 5'd9,  16'h33};      j=j+1;//     addi $9, $0, 0x33 // t = ox33
+    cm_ram[j]={`ADDI, 5'd9,  5'd30, 16'd0};      j=j+1;//     addi $30, $9, 0   // output tp
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]=`HALT;                             j=j+1;//     halt
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop    
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop    
+end

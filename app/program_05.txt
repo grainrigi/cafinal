@@ -1,0 +1,54 @@
+/********************************************************************************/
+/* sample MIPS program for CA                                                   */
+/* Note: 4,000,000 = 0x3d_0900                                                  */
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+
+integer j=0;
+initial begin
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`ADDI, 5'd0, 5'd9,  16'd16};      j=j+1;//     addi $9, $0, 16     // tmp =  16
+    cm_ram[j]={`ADDI, 5'd0, 5'd25, 16'h3d};      j=j+1;//     addi $25, $0, ??    // i_max = 0x3d;
+    cm_ram[j]={6'h0,5'd25,5'd9,5'd25,5'h0,6'h4}; j=j+1;//     sllv $25, $25, $9   // i_max = 0x3d_0000
+    cm_ram[j]={`ADDI, 5'd25,5'd25, 16'h900};     j=j+1;//     addi $25, $25, 0x900// i_max = 0x3d_0900
+    cm_ram[j]={`ADDI, 5'd0, 5'd22, 16'd0};       j=j+1;//     addi $22, $0, 0     // k = 0;
+    
+    cm_ram[j]={`NOP};                            j=j+1;// L1: nop
+    cm_ram[j]={`ADDI, 5'd0, 5'd20, 16'd0};       j=j+1;//     addi $20, $0, 0     // i = 0;
+    
+    cm_ram[j]={`NOP};                            j=j+1;// L2: nop                         
+    cm_ram[j]={`ADDI, 5'd20, 5'd20, 16'd1};      j=j+1;//     addi $20, $20, 1    // i++;
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`ADDI, 5'd0, 5'd11, 16'h1000};    j=j+1;//     addi $11, $0,0x1000 // d = 0x1000
+    cm_ram[j]={`SW,   5'd0, 5'd11, 16'd4};       j=j+1;//     sw   $11, 4($0)     // m[4] <= d
+    cm_ram[j]={`ADDI, 5'd0, 5'd11, 16'h100};     j=j+1;//     addi $11, $0,0x100  // d = 0x100
+    cm_ram[j]={`SW,   5'd0, 5'd11, 16'd8};       j=j+1;//     sw   $11, 8($0)     // m[8] <= d
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`BNE,  5'd20, 5'd25, -16'd10};    j=j+1;//     bne  $20, $25, L2   // if(i!=i_max)go L2
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    
+    cm_ram[j]={`ADDI, 5'd22, 5'd22, 16'd1};      j=j+1;//     addi $22, $22, 1    // k++;
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`LW,   5'd0, 5'd10, 16'd4};       j=j+1;//     lw   $10, 4($0)     // d <= m[4]
+    cm_ram[j]={6'h0,  5'd10,5'd22,5'd22,11'h20}; j=j+1;//     add  $22,$10,$22    // k = k + d
+    cm_ram[j]={`LW,   5'd0, 5'd10, 16'd8};       j=j+1;//     lw   $10, 8($0)     // d <= m[8]
+    cm_ram[j]={6'h0,  5'd10,5'd22,5'd22,11'h20}; j=j+1;//     add  $22,$10,$22    // k = k + d
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`ADDI, 5'd22, 5'd30, 16'd0};      j=j+1;//     addi $30, $22, 0    // output k
+    cm_ram[j]={`BEQ,  5'd0, 5'd0,  -16'd22};     j=j+1;//     beq  $0, $0, L1     // goto L1
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]=`HALT;                             j=j+1;//     halt
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop
+    cm_ram[j]={`NOP};                            j=j+1;//     nop    
+end

@@ -1,0 +1,43 @@
+/********************************************************************************/
+/* sample MIPS program for CA                                                   */
+/* Note: 4,000,000 = 0x3d_0900                                                  */
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+
+initial begin
+    cm_ram[0] ={`NOP};                            //     nop
+    cm_ram[1] ={`NOP};                            //     nop
+    cm_ram[2] ={`ADDI, 5'd0, 5'd9,  16'd16};      //     addi $9, $0, 16     // tmp =  16
+    cm_ram[3] ={`ADDI, 5'd0, 5'd25, 16'h3d};      //     addi $25, $0, ??    // i_max = 0x3d;
+    cm_ram[4] ={6'h0,5'd25,5'd9,5'd25,5'h0,6'h4}; //     sllv $25, $25, $9   // i_max = 0x3d_0000
+    cm_ram[5] ={`ADDI, 5'd25,5'd25, 16'h900};     //     addi $25, $25, 0x900// i_max = 0x3d_0900
+    cm_ram[6] ={`ADDI, 5'd0, 5'd22, 16'd0};       //     addi $22, $0, 0     // k = 0;
+
+    cm_ram[7] ={`NOP};                            // L01:
+    cm_ram[8] ={`ADDI, 5'd0, 5'd20,16'd0};        //     addi $20, $0, 0     // i = 0;
+    
+    cm_ram[9] ={`NOP};                            // L02:                            
+    cm_ram[10]={`ADDI, 5'd20, 5'd20, 16'd1};      //     addi $20, $20, 1    // i++;
+    cm_ram[11]={`NOP};                            // 
+    cm_ram[12]={`NOP};                            //      
+    cm_ram[13]={`NOP};                            // 
+    cm_ram[14]={`NOP};                            //     
+    cm_ram[15]={`NOP};                            // 
+    cm_ram[16]={`NOP};                            // 
+    cm_ram[17]={`NOP};                            // 
+    cm_ram[18]={`BNE,  5'd20, 5'd25, -16'd10};    //     bne  $20, $25, L02  // if(i!=i_max) goto L02
+    
+    cm_ram[19]={`ADDI, 5'd22, 5'd22, 16'd1};      //     addi $22, $22, 1    // k++;
+    cm_ram[20]={`ADDI, 5'd22, 5'd30, 16'd0};      //     addi $30, $22, 0    // output k
+    cm_ram[21]={`BEQ,  5'd0, 5'd0,  -16'd15};     //     beq  $0, $0, L01    // goto L01
+    cm_ram[22]={`NOP};                            //     nop
+    cm_ram[23]={`NOP};                            //     nop
+    cm_ram[24]=`HALT;                             //     halt
+    cm_ram[25]={`NOP};                            //     nop
+    cm_ram[26]={`NOP};                            //     nop
+end

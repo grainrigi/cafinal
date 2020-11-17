@@ -1,0 +1,46 @@
+/********************************************************************************/
+/* sample MIPS program for CA                                                   */
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+
+integer j=0;
+initial begin
+    cm_ram[j]={`NOP};                            j=j+1;//     
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'h333};     j=j+1;//     i     = 0
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`SW,   5'd0, 5'd8, 16'd4};        j=j+1;//     m[adr] <= i
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`LW,   5'd0, 5'd7, 16'd4};        j=j+1;//     d <= m[adr]
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//    
+    cm_ram[j]={`SW,   5'd0, 5'd7, 16'd0};        j=j+1;//     m[0] <= sum    
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`HALT};                           j=j+1;//     halt
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//    
+end
