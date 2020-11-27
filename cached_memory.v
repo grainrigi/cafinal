@@ -138,11 +138,9 @@ module m_cached_memory #(
      output wire [31:0]                  o_dmem_data,
      output wire                         o_dmem_stall);
 
-    localparam STATE_DRAM_CALIB     = 3'b000;
-    localparam STATE_DRAM_IDLE      = 3'b001;
-    localparam STATE_DRAM_WRITE     = 3'b010;
-    localparam STATE_DRAM_READ      = 3'b011;
-    localparam STATE_DRAM_READ_WAIT = 3'b100;
+    localparam STATE_DRAM_CALIB     = 2'b00;
+    localparam STATE_DRAM_IDLE      = 2'b01;
+    localparam STATE_DRAM_READ_WAIT = 2'b10;
     localparam ISSUE_NONE           = 2'b00;
     localparam ISSUE_READ           = 2'b10;
     localparam ISSUE_WRITE          = 2'b11;
@@ -177,7 +175,7 @@ module m_cached_memory #(
     reg  [31:0]                 dmem_addr_reg;
     reg  [31:0]                 dmem_din_reg;
 
-    reg  [2:0]                  state = STATE_DRAM_CALIB;
+    reg  [1:0]                  state = STATE_DRAM_CALIB;
     reg  [1:0]                  issuing;
 
     integer i;
@@ -318,16 +316,6 @@ module m_cached_memory #(
                     end else if (dmem_ren) begin
                       issuing <= ISSUE_READ;
                       state <= STATE_DRAM_READ_WAIT;
-                    end
-                end
-                STATE_DRAM_WRITE: begin
-                    if (!dram_busy) begin
-                        state <= STATE_DRAM_IDLE;
-                    end
-                end
-                STATE_DRAM_READ: begin
-                    if (!dram_busy) begin
-                        state <= STATE_DRAM_READ_WAIT;
                     end
                 end
                 default: begin // STATE_DRAM_READ_WAIT
