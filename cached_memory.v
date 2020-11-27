@@ -1,9 +1,8 @@
 `include "define.v"
 `include "cache.v"
-`include "common/sync_fifo.v"
 
-`define PSEUDO_DRAM
 `ifdef PSEUDO_DRAM
+`include "common/sync_fifo.v"
 module m_mw_memory #(
           parameter APP_ADDR_WIDTH  = 28,
           parameter APP_CMD_WIDTH   = 3,
@@ -30,7 +29,7 @@ module m_mw_memory #(
   integer i;
   always @(posedge i_clk) begin
     if (i_wen) begin
-      for (i = 0; i < APP_MASK_WIDTH; i++) begin
+      for (i = 0; i < APP_MASK_WIDTH; i = i + 1) begin
         if (!i_mask[i]) cm_ram[w_addr][i*8 +: 8] <= i_data[i*8 +: 8];
       end
     end
