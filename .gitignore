@@ -5,3 +5,5 @@ diff.txt
 log.txt
 a.out
 *.vcd
+app/memory_image.bin
+app/code205.v
