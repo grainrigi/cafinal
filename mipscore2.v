@@ -44,8 +44,10 @@ module MIPSCORE2 (
   reg         IdId1_pr;        // ID-ID1 pipeline reg: is branch predicted (may invalidated on prediction failure)
   reg         IdId1_add;       // ID-ID1 pipeline reg: add
   reg         IdId1_addi;      // ID-ID1 pipeline reg: addi
+`ifdef ENABLE_SHIFT
   reg         IdId1_sllv;      // ID-ID1 pipeline reg: sllv
   reg         IdId1_srlv;      // ID-ID1 pipeline reg: srlv
+`endif
   reg         IdId1_beq;       // ID-ID1 pipeline reg: beq
   reg         IdId1_bne;       // ID-ID1 pipeline reg: bne
   reg         IdId1_sw;        // ID-ID1 pipeline reg: sw
@@ -61,8 +63,10 @@ module MIPSCORE2 (
   reg         Id1Id2_pr;       // ID1-ID2 pipeline reg: is branch predicted (may invalidated on prediction failure)
   reg         Id1Id2_add;      // ID1-ID2 pipeline reg: add
   reg         Id1Id2_addi;     // ID1-ID2 pipeline reg: addi
+`ifdef ENABLE_SHIFT
   reg         Id1Id2_sllv;     // ID1-ID2 pipeline reg: sllv
   reg         Id1Id2_srlv;     // ID1-ID2 pipeline reg: srlv
+`endif
   reg         Id1Id2_beq;      // ID1-ID2 pipeline reg: beq
   reg         Id1Id2_bne;      // ID1-ID2 pipeline reg: bne
   reg         Id1Id2_sw;       // ID1-ID2 pipeline reg: sw
@@ -80,8 +84,10 @@ module MIPSCORE2 (
   reg         Id2Ex_pr;        // ID2-EX pipeline reg: is branch predicted (may invalidated on prediction failure)
   reg         Id2Ex_add;       // ID2-EX pipeline reg: add
   reg         Id2Ex_addi;      // ID2-EX pipeline reg: addi
+`ifdef ENABLE_SHIFT
   reg         Id2Ex_sllv;      // ID2-EX pipeline reg: sllv
   reg         Id2Ex_srlv;      // ID2-EX pipeline reg: srlv
+`endif
   reg         Id2Ex_beq;       // ID2-EX pipeline reg: beq
   reg         Id2Ex_bne;       // ID2-EX pipeline reg: bne
   reg         Id2Ex_sw;        // ID2-EX pipeline reg: sw
@@ -152,8 +158,10 @@ module MIPSCORE2 (
 
   wire        IdADD   = IdOP == 0 && IdFUNCT == `ADD;
   wire        IdADDI  = IdOP == `ADDI;
+`ifdef ENABLE_SHIFT
   wire        IdSLLV  = IdOP == 0 && IdFUNCT == `SLLV;
   wire        IdSRLV  = IdOP == 0 && IdFUNCT == `SRLV;
+`endif
   wire        IdBEQ   = IdOP == `BEQ;
   wire        IdBNE   = IdOP == `BNE;
   wire        IdLW    = IdOP == `LW;
@@ -174,7 +182,10 @@ module MIPSCORE2 (
 
   always @(posedge CLK) begin
     if (!RST_X) {IdId1_pc, IdId1_pc4, IdId1_pr,
-      IdId1_add, IdId1_addi, IdId1_sllv, IdId1_srlv, IdId1_beq, IdId1_bne, IdId1_lw, IdId1_sw,
+`ifdef ENABLE_SHIFT
+      IdId1_sllv, IdId1_srlv, 
+`endif
+      IdId1_add, IdId1_addi, IdId1_beq, IdId1_bne, IdId1_lw, IdId1_sw,
       IdId1_rs, IdId1_rt, IdId1_rd2, IdId1_imm32,
       IdId1_tpc} <= #3 0;
     else if (!Id_STALL) begin
@@ -184,8 +195,10 @@ module MIPSCORE2 (
 
       IdId1_add   <= #3 IdADD;
       IdId1_addi  <= #3 IdADDI;
+`ifdef ENABLE_SHIFT
       IdId1_sllv  <= #3 IdSLLV;
       IdId1_srlv  <= #3 IdSRLV;
+`endif
       IdId1_beq   <= #3 !r_pr_fail && IdBEQ;
       IdId1_bne   <= #3 !r_pr_fail && IdBNE;
       IdId1_lw    <= #3 !r_pr_fail && IdLW;
@@ -214,7 +227,10 @@ module MIPSCORE2 (
           .REGNUM2(MeWb_rd2), .DIN0(WbRSLT), .WE0(!Wb_STALL));
   always @(posedge CLK) begin
     if (!RST_X) {Id1Id2_pc, Id1Id2_pc4, Id1Id2_pr,
-      Id1Id2_add, Id1Id2_addi, Id1Id2_sllv, Id1Id2_srlv, Id1Id2_beq, Id1Id2_bne, Id1Id2_lw, Id1Id2_sw,
+`ifdef ENABLE_SHIFT
+      Id1Id2_sllv, Id1Id2_srlv,
+`endif
+      Id1Id2_add, Id1Id2_addi, Id1Id2_beq, Id1Id2_bne, Id1Id2_lw, Id1Id2_sw,
       Id1Id2_rs, Id1Id2_rt, Id1Id2_rd2, Id1Id2_imm32,
       Id1Id2_tpc,
       Id1Id2_rrs, Id1Id2_rrt} <= #3 0;
@@ -225,8 +241,10 @@ module MIPSCORE2 (
 
       Id1Id2_add   <= #3 IdId1_add;
       Id1Id2_addi  <= #3 IdId1_addi;
+`ifdef ENABLE_SHIFT
       Id1Id2_sllv  <= #3 IdId1_sllv;
       Id1Id2_srlv  <= #3 IdId1_srlv;
+`endif
       Id1Id2_beq   <= #3 !r_pr_fail && IdId1_beq;
       Id1Id2_bne   <= #3 !r_pr_fail && IdId1_bne;
       Id1Id2_lw    <= #3 !r_pr_fail && IdId1_lw;
@@ -264,7 +282,10 @@ module MIPSCORE2 (
 
   always @(posedge CLK) begin
     if (!RST_X) {Id2Ex_pc, Id2Ex_pc4, Id2Ex_pr,
-      Id2Ex_add, Id2Ex_addi, Id2Ex_sllv, Id2Ex_srlv, Id2Ex_beq, Id2Ex_bne, Id2Ex_lw, Id2Ex_sw,
+`ifdef ENABLE_SHIFT
+      Id2Ex_sllv, Id2Ex_srlv,
+`endif
+      Id2Ex_add, Id2Ex_addi, Id2Ex_beq, Id2Ex_bne, Id2Ex_lw, Id2Ex_sw,
       Id2Ex_rs, Id2Ex_rt, Id2Ex_rd2,
       Id2Ex_tpc,
       Id2Ex_rrs, Id2Ex_rrt, Id2Ex_rrt2,
@@ -276,8 +297,10 @@ module MIPSCORE2 (
 
       Id2Ex_add    <= #3 Id1Id2_add;
       Id2Ex_addi   <= #3 Id1Id2_addi;
+`ifdef ENABLE_SHIFT
       Id2Ex_sllv   <= #3 Id1Id2_sllv;
       Id2Ex_srlv   <= #3 Id1Id2_srlv;
+`endif
       Id2Ex_beq    <= #3 !r_pr_fail && Id1Id2_beq;
       Id2Ex_bne    <= #3 !r_pr_fail && Id1Id2_bne;
       Id2Ex_lw     <= #3 !r_pr_fail && Id1Id2_lw;
@@ -313,9 +336,13 @@ module MIPSCORE2 (
                       /*(Id2Ex_rtfwwb) ? MeWb_rslt :*/ Id2Ex_rrt2;
 
   // ALU
+`ifdef ENABLE_SHIFT
   wire [31:0] #10 ExRSLT = Id2Ex_sllv ? ExOP1 << ExOP2[4:0] :
                            Id2Ex_srlv ? ExOP1 >> ExOP2[4:0] :
                            ExOP1 + ExOP2;
+`else
+  wire [31:0] #10 ExRSLT = ExOP1 + ExOP2;
+`endif
   
   // WBからメモリの読み出し結果をフォワードしなければならない場合、インターロック
   assign WBEXFW_INTERLOCK = MeWb_lw && (Id2Ex_rsfwwb || Id2Ex_rtfwwb);
