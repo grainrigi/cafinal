@@ -39,20 +39,6 @@ module m_UartRx (w_clk, w_rxd, w_dout, r_en);
    assign w_dout = r_data[7:0];
 endmodule
 
-/************************************************************************************/
-module m_regfile (w_clk, w_rr1, w_rr2, w_wr, w_we, w_wdata, w_rdata1, w_rdata2);
-   input  wire        w_clk;
-   input  wire [4:0]  w_rr1, w_rr2, w_wr;
-   input  wire [31:0] w_wdata;
-   input  wire        w_we;
-   output wire [31:0] w_rdata1, w_rdata2;
-   
-   reg [31:0] r[0:31];
-   assign w_rdata1 = (w_rr1==0) ? 0 : r[w_rr1];
-   assign w_rdata2 = (w_rr2==0) ? 0 : r[w_rr2];
-   always @(posedge w_clk) if(w_we) r[w_wr] <= w_wdata;
-endmodule
-
 /********************************************************************************************/
 module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    input  wire w_clk, w_we;
@@ -62,71 +48,6 @@ module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    reg [31:0] cm_ram [0:511]; // 512 word (512 x 32bit) memory
    always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
    always @(posedge w_clk) r_dout <= cm_ram[w_raddr];                            // read  port
-endmodule
-
-/********************************************************************************************/
-module m_proc09 (CLK, RST_X, STALL, I_ADDR, I_IN, D_ADDR, D_IN, D_OUT, D_OE, D_WE, IO_IN);
-   input  wire CLK, RST_X, STALL;
-   input  wire [31:0] I_IN;
-   output wire [31:0] I_ADDR;
-   output wire [31:0] D_ADDR;
-   output wire  [3:0] D_WE;
-   output wire        D_OE;
-   output wire [31:0] D_OUT;
-   input  wire [31:0] D_IN, IO_IN;
-
-   wire w_clk = CLK;
-   wire w_stall = STALL;
-
-   reg  [31:0] r_pc = 0;
-   wire [31:0] w_ir = I_IN;
-   wire [31:0] w_rrs, w_rrt;
-   wire [31:0] w_rrt2, w_rslt, w_ldd, w_rslt2;
-   wire  [5:0] w_op    = w_ir[31:26];
-   wire  [4:0] w_rs    = w_ir[25:21];
-   wire  [4:0] w_rt    = w_ir[20:16];
-   wire  [4:0] w_rd    = w_ir[15:11];
-   wire [15:0] w_imm   = w_ir[15: 0];
-   wire  [5:0] w_funct = w_ir[ 5: 0];
-
-   assign I_ADDR  = r_pc;
-   assign D_ADDR  = w_rslt;
-   assign D_WE    = (w_insn_sw & (state==0)) ? 4'b1111 : 0; // write enable for store insn
-   assign D_OUT   = w_rrt;                                  // write data   for store insn
-   assign D_OE    = w_insn_lw & (state==0);                 // read enable  for load  insn
-   
-   wire w_insn_add  = (w_op==0 && w_funct==6'h20);
-   wire w_insn_sllv = (w_op==0 && w_funct==6'h4);
-   wire w_insn_srlv = (w_op==0 && w_funct==6'h6);
-   wire w_insn_addi = (w_op==6'h8);
-   wire w_insn_lw   = (w_op==6'h23);
-   wire w_insn_sw   = (w_op==6'h2b);
-   wire w_insn_beq  = (w_op==6'h4);
-   wire w_insn_bne  = (w_op==6'h5);
-
-   reg state = 0;
-   always @(posedge w_clk) state <= (!RST_X) ? 0 : (!w_stall) ? state + 1 : state;
-   
-   wire [31:0] w_pc4 = r_pc + 4;
-   wire [31:0] w_imm32 = {{16{w_imm[15]}}, w_imm};
-   wire [31:0] w_tpc = w_pc4 + {w_imm32[29:0], 2'h0};
-   wire w_taken = (w_insn_beq && w_rrs==w_rrt2) || (w_insn_bne && w_rrs!=w_rrt2);
-
-   always @(posedge w_clk) 
-     r_pc <= (!RST_X) ? 0 : (w_stall || state==0) ? r_pc : (w_taken) ? w_tpc : w_pc4;
-   
-   wire  [4:0] w_rd2 = (w_insn_add | w_insn_sllv | w_insn_srlv) ? w_rd : w_rt;
-   wire w_we = w_insn_add | w_insn_addi | w_insn_sllv | w_insn_srlv | w_insn_lw;
-
-   m_regfile m_regs (w_clk, w_rs, w_rt, w_rd2, w_we && (w_stall==0) && state, 
-                     w_rslt2, w_rrs, w_rrt);
-
-   assign w_rrt2 = (w_insn_addi | w_insn_lw | w_insn_sw) ? w_imm32 : w_rrt;
-
-   assign w_rslt = (w_insn_sllv) ? w_rrs << w_rrt2[4:0] :
-		   (w_insn_srlv) ? w_rrs >> w_rrt2[4:0] : w_rrs + w_rrt2;
-
-   assign w_rslt2 = (w_insn_lw) ? D_IN : w_rslt;
 endmodule
 
 /********************************************************************************************/
