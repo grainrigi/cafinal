@@ -397,8 +397,8 @@ module MIPSCORE (
   // communicate with DRAM
   assign D_ADDR = ExMe_rslt;
   assign D_OUT  = MeSTD;
-  assign D_WE   = (!Me_STALL && ExMe_sw) ? 4'b1111 : 0;
-  assign D_OE   = !Me_STALL && ExMe_lw;
+  assign D_WE   = (ExMe_sw) ? 4'b1111 : 0;
+  assign D_OE   = ExMe_lw;
 
   always @(posedge CLK) begin
     if (!RST_X) {MeWb_pc,
