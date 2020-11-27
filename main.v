@@ -44,7 +44,7 @@ module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    input  wire w_clk, w_we;
    input  wire [ 8:0] w_raddr, w_waddr; // read address & write address
    input  wire [31:0] w_din;
-   output wire [31:0] r_dout;
+   output reg  [31:0] r_dout;
    reg [31:0] cm_ram [0:511]; // 512 word (512 x 32bit) memory
    always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
    always @(posedge w_clk) r_dout <= cm_ram[w_raddr];                            // read  port
