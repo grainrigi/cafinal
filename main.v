@@ -174,7 +174,7 @@ module main #(
    assign dmem_init_addr = 0; //initaddr;
    assign dmem_init_din  = 0; //initdata;
 
-   DataMemory #(
+   m_cached_memory #(
                 .DDR3_DQ_WIDTH(DDR3_DQ_WIDTH),
                 .DDR3_DQS_WIDTH(DDR3_DQS_WIDTH),
                 .DDR3_ADDR_WIDTH(DDR3_ADDR_WIDTH),
