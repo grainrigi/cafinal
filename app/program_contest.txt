@@ -1,0 +1,77 @@
+/********************************************************************************/
+/***** program for CLD design contest 2020 (Version 2020-09-14a)            *****/
+/***** do not modify this code                                              *****/
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+
+initial begin
+    cm_ram[0] ={`NOP};                            //     nop
+    cm_ram[1] ={`NOP};                            //     nop
+    cm_ram[2] ={`ADDI, 5'd0, 5'd20,16'd0};        //     addi $20, $0, 0
+    cm_ram[3] ={`ADDI, 5'd0, 5'd21,16'd3};        //     addi $21, $0, 3
+    cm_ram[4] ={6'h0, 5'd0, 5'd0, 5'd12,11'h20};  //     addi $12,$0, $0   // sum = 0;
+    
+    cm_ram[5] ={`ADDI, 5'd0, 5'd11,16'h0};        // L03 addi $11,$0, 0
+    cm_ram[6] ={`ADDI, 5'd0, 5'd8, 16'd2048};     //     addi $8, $0, 2048
+    cm_ram[7] ={`ADDI, 5'd0, 5'd9, 16'h0};        //     addi $9, $0, 0
+    cm_ram[8] ={`ADDI, 5'd0, 5'd10,16'h0};        //     addi $10,$0, 0
+
+    cm_ram[9] ={`SW,   5'd10,5'd11,16'd0};        // L01:sw   $11,0($10)
+    cm_ram[10]={`ADDI, 5'd9, 5'd9, 16'h1};        //     addi $9, $9, 1
+    cm_ram[11]={`ADDI, 5'd11,5'd11,16'h4};        //     addi $11,$11,4
+    cm_ram[12]={6'h0,  5'd11, 5'd9, 5'd25, 11'h4};//     sllv $25, $11, $9
+    cm_ram[13]={6'h0,  5'd25, 5'd9, 5'd26, 11'h6};//     srlv $26, $25, $9
+    cm_ram[14]={`ADDI, 5'd11,5'd11,16'h0};        //     addi $11,$11,0
+    cm_ram[15]={`ADDI, 5'd10,5'd10,16'h4};        //     addi $10,$10,4
+    cm_ram[16]={`BEQ,  5'd8, 5'd9, 16'h0001};     //     beq  $8, $9, L04
+    cm_ram[17]={`BNE,  5'd8, 5'd0, 16'hfff7};     //     bne  $8, $0, L01 (unconditional)
+
+    cm_ram[18]={`ADDI, 5'd0, 5'd8, 16'd2048};     // L04:addi $8, $0, 2048
+    cm_ram[19]={`ADDI, 5'd0, 5'd9, 16'h0};        //     addi $9, $0, 0
+    cm_ram[20]={`ADDI, 5'd0, 5'd10,16'h0};        //     addi $10,$0, 0
+
+    cm_ram[21]={`LW,   5'd10,5'd11,16'd0};        // L02:lw   $11,0($10)
+    cm_ram[22]={`ADDI, 5'd9, 5'd9, 16'h1};        //     addi $9, $9, 1
+    cm_ram[23]={`ADDI, 5'd10,5'd10,16'h4};        //     addi $10,$10,4
+    cm_ram[24]={6'h0,  5'd12,5'd11,5'd12,11'h20}; //     add  $12,$12,$11  // sum += $11
+    cm_ram[25]={`ADDI, 5'd12,5'd12,16'h1};        //     addi $12,$12,1    // sum ++;
+    cm_ram[26]={`ADDI, 5'd12,5'd12,16'hffff};     //     addi $12,$12,-1   // sum --;
+    cm_ram[27]={`ADDI, 5'd12,5'd12,16'h1};        //     addi $12,$12,1    // sum ++;
+    cm_ram[28]={`ADDI, 5'd12,5'd12,16'h1};        //     addi $12,$12,1    // sum ++;
+    cm_ram[29]={`ADDI, 5'd12,5'd12,16'hffff};     //     addi $12,$12,-1   // sum --;
+    cm_ram[30]={`ADDI, 5'd12,5'd12,16'h1};        //     addi $12,$12,1    // sum ++;
+    cm_ram[31]={`ADDI, 5'd12,5'd12,16'hfffe};     //     addi $12,$12,-2   // sum -= 2;
+    cm_ram[32]={`BNE,  5'd8, 5'd9, 16'hfff4};     //     bne  $8, $9, L02
+
+    cm_ram[33]={6'h0,  5'd26, 5'd21, 5'd26,11'h6};//     srlv $26, $26, $21
+    cm_ram[34]={`ADDI, 5'd20,5'd20,16'h1};        //     addi $20,$20,1    // j++
+    cm_ram[35]={`ADDI, 5'd8, 5'd8,16'h11};        //     addi $8, $8, 0x11 //
+    cm_ram[36]={`ADDI, 5'd8, 5'd8,16'h12};        //     addi $8, $8, 0x12 // 
+    cm_ram[37]={`ADDI, 5'd8, 5'd8,16'h13};        //     addi $8, $8, 0x13 //
+    cm_ram[38]={`ADDI, 5'd8, 5'd8,16'h14};        //     addi $8, $8, 0x14 //    
+    cm_ram[39]={`BNE,  5'd20,5'd21,16'hffdd};     //     bne  $20,$21,L03  // (j<4) ?
+    cm_ram[40]={`NOP};                            //     nop
+    cm_ram[41]={6'h0,  5'd12,5'd0, 5'd30,11'h20}; //     add  $30,$12,$0
+    cm_ram[42]={6'h0,  5'd30,5'd0, 5'd0, 11'h20}; //     add  $0, $30,$0 // 017fd000
+    cm_ram[43]={`NOP};                            //     nop
+    cm_ram[44]={`NOP};                            //     nop
+    cm_ram[45]={`NOP};                            //     nop
+    cm_ram[46]={`NOP};                            //     nop
+    cm_ram[47]={`NOP};                            //     nop
+    cm_ram[48]={`NOP};                            //     nop
+    cm_ram[49]={`NOP};                            //     nop
+    cm_ram[50]={`NOP};                            //     nop
+    cm_ram[51]={`NOP};                            //     nop
+    cm_ram[52]={`NOP};                            //     nop
+    cm_ram[53]=`HALT;                             //     halt
+    cm_ram[54]={`NOP};                            //     nop
+    cm_ram[55]={`NOP};                            //     nop
+    cm_ram[56]={`NOP};                            //     nop
+    cm_ram[57]={`NOP};                            //     nop
+    cm_ram[58]={`NOP};                            //     nop
+end

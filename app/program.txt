@@ -17,6 +17,7 @@
 
 integer j=0;
 initial begin
+//0
     cm_ram[j]={`NOP};                            j=j+1;//     
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`ADDI, 5'd0, 5'd7,  16'd0};       j=j+1;//     sum   = 0
@@ -24,6 +25,7 @@ initial begin
     cm_ram[j]={`ADDI, 5'd0, 5'd9,  16'd1000};    j=j+1;//     i_max = 1000
     cm_ram[j]={`NOP};                            j=j+1;//
     
+//24(18)
     cm_ram[j]={`NOP};                            j=j+1;// L1:     
     cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;//     i = i + 1;
     cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
@@ -32,6 +34,7 @@ initial begin
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
+//56(38)
     cm_ram[j]={`SW,   5'd5, 5'd8, 16'd0};        j=j+1;//     m[adr] <= i
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
@@ -39,8 +42,10 @@ initial begin
     cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd12};      j=j+1;//     if(i!=i_max) goto L1
     cm_ram[j]={`NOP};                            j=j+1;//
 
+//80(50)
     cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'd0};       j=j+1;//     i     = 0
 
+//84(54)
     cm_ram[j]={`NOP};                            j=j+1;// L2:     
     cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;//     i = i + 1;
     cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
@@ -48,16 +53,24 @@ initial begin
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
+//112(70)
     cm_ram[j]={`LW,   5'd5, 5'd6, 16'd0};        j=j+1;//     d <= m[adr]
     cm_ram[j]={`NOP};                            j=j+1;//
+//120(78)
     cm_ram[j]={6'h0,  5'd7, 5'd6, 5'd7, 11'h20}; j=j+1;//     sum = sum + d
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd12};      j=j+1;//     if(i!=i_max) goto L2
     cm_ram[j]={`NOP};                            j=j+1;//
 
+//140(8C)
     cm_ram[j]={`ADDI, 5'd7,  5'd30, 16'd0};      j=j+1;//     print(sum)
     cm_ram[j]={`SW,   5'd0, 5'd7, 16'd0};        j=j+1;//     m[0] <= sum    
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//
     cm_ram[j]={`NOP};                            j=j+1;//

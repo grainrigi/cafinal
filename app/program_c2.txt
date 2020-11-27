@@ -1,0 +1,105 @@
+/********************************************************************************/
+/* cbench sample MIPS benchmark program for CA                                  */
+/********************************************************************************/
+`define ADDI 6'h8
+`define LW   6'h23
+`define SW   6'h2b
+`define BEQ  6'h4
+`define BNE  6'h5
+`define NOP  {6'h0, 5'd0, 5'd0, 5'd0, 5'h0, 6'h20} // add $0, $0, $0
+`define SLLV {5'd0, 6'h04}
+`define SRLV {5'd0, 6'h06}
+
+integer j=0;
+initial begin
+    cm_ram[j]={`NOP};                            j=j+1;//     
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`ADDI, 5'd0, 5'd3,  16'd2};       j=j+1;//     $3    = 2
+    cm_ram[j]={`ADDI, 5'd0, 5'd4,  16'd16};      j=j+1;//     $4    = 16
+    cm_ram[j]={`ADDI, 5'd0, 5'd7,  16'd0};       j=j+1;//     sum   = 0
+    cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'd0};       j=j+1;//     i     = 0
+    cm_ram[j]={`ADDI, 5'd0, 5'd9,  16'h4000};    j=j+1;//     i_max = 0x4000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x8000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x10000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x20000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x40000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x80000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x100000
+    cm_ram[j]={6'h0,  5'd9, 5'd9, 5'd9, 11'h20}; j=j+1;//     i_max = 0x200000
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`SW,   5'd0, 5'd9, 16'd0};        j=j+1;//     print(i_max)
+    
+/***** for(i=1; i<=i_max; i++) { adr = i<<2; mem[adr] = i;} *****/
+    cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;// L1: i = i + 1;
+    cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
+    cm_ram[j]={6'h0,  5'd5, 5'd5, 5'd5, 11'h20}; j=j+1;//     adr = adr + adr;
+    cm_ram[j]={`SW,   5'd5, 5'd8, 16'd0};        j=j+1;//     m[adr] <= i
+    cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd5};       j=j+1;//     if(i!=i_max) goto L1
+    cm_ram[j]={`NOP};                            j=j+1;//
+
+    cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'd0};       j=j+1;//     i     = 0
+
+/***** for(i=1; i<=i_max; i++) { adr = i<<2; d = mem[adr]; sum += d; } *****/
+    cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;// L2: i = i + 1;
+    cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
+    cm_ram[j]={6'h0,  5'd5, 5'd5, 5'd5, 11'h20}; j=j+1;//     adr = adr + adr;
+    cm_ram[j]={`LW,   5'd5, 5'd6, 16'd0};        j=j+1;//     d <= m[adr]
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={6'h0,  5'd7, 5'd6, 5'd7, 11'h20}; j=j+1;//     sum = sum + d
+    cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd7};       j=j+1;//     if(i!=i_max) goto L2
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`SW,   5'd0, 5'd7, 16'd0};        j=j+1;//     print(i_max)    
+/***** sum($7) must be 0x0010_0000 *****/
+
+/***** main loop *****/
+    cm_ram[j]={`ADDI, 5'd9, 5'd9,  -16'd10};     j=j+1;//     i_max = i_max - 10
+    cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'd0};       j=j+1;//     i     = 0
+
+    cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;// L3: i = i + 1;
+    cm_ram[j]={`ADDI, 5'd0, 5'd20,  16'd0};      j=j+1;//     t     = 0
+    cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
+    cm_ram[j]={6'h0,  5'd5, 5'd5, 5'd5, 11'h20}; j=j+1;//     adr = adr + adr;
+    cm_ram[j]={`LW,   5'd5, 5'd21, 16'd0};       j=j+1;//     d1 <= m[adr]
+    cm_ram[j]={`LW,   5'd5, 5'd22, 16'd4};       j=j+1;//     d2 <= m[adr+4]
+    cm_ram[j]={`LW,   5'd5, 5'd23, 16'd8};       j=j+1;//     d3 <= m[adr+8]
+    cm_ram[j]={`LW,   5'd5, 5'd24, 16'd12};      j=j+1;//     d3 <= m[adr+12]
+    cm_ram[j]={6'h0,5'd21, 5'd20, 5'd20, 11'h20};j=j+1;//     t = t + d1
+    cm_ram[j]={6'h0,5'd22, 5'd20, 5'd20, 11'h20};j=j+1;//     t = t + d2
+    cm_ram[j]={6'h0,5'd23, 5'd20, 5'd20, 11'h20};j=j+1;//     t = t + d3
+    cm_ram[j]={6'h0,5'd24, 5'd20, 5'd20, 11'h20};j=j+1;//     t = t + d4
+    cm_ram[j]={`ADDI, 5'd20, 5'd20,  16'd1};     j=j+1;//     t = t + 1
+
+    cm_ram[j]={6'h0,5'd21, 5'd22, 5'd25, 11'h20};j=j+1;//     t2 = d1 + d2
+    cm_ram[j]={6'h0,5'd23, 5'd24, 5'd26, 11'h20};j=j+1;//     t3 = d3 + d4
+    cm_ram[j]={6'h0,5'd25, 5'd26, 5'd27, 11'h20};j=j+1;//     t4 = t2 + t3
+    cm_ram[j]={6'h0,5'd27, 5'd20, 5'd20, 11'h20};j=j+1;//     t = t + t4
+    
+    cm_ram[j]={`SW,   5'd5, 5'd20, 16'd0};       j=j+1;//     m[adr] <= t
+    cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd19};      j=j+1;//     if(i!=i_max) goto L3
+    cm_ram[j]={`NOP};                            j=j+1;//    
+
+    cm_ram[j]={`ADDI, 5'd0, 5'd8,  16'd0};       j=j+1;//     i     = 0
+
+/***** for(i=1; i<=i_max; i++) { adr = i<<2; d = mem[adr]; sum += d; } *****/
+    cm_ram[j]={`ADDI, 5'd8, 5'd8,  16'd1};       j=j+1;// L4: i = i + 1;
+    cm_ram[j]={6'h0,  5'd8, 5'd8, 5'd5, 11'h20}; j=j+1;//     adr = i + i;
+    cm_ram[j]={6'h0,  5'd5, 5'd5, 5'd5, 11'h20}; j=j+1;//     adr = adr + adr;
+    cm_ram[j]={`LW,   5'd5, 5'd6, 16'd0};        j=j+1;//     d <= m[adr]
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={6'h0,  5'd7, 5'd6, 5'd7, 11'h20}; j=j+1;//     sum = sum + d
+    cm_ram[j]={`BNE,  5'd8, 5'd9, -16'd7};       j=j+1;//     if(i!=i_max) goto L4
+    cm_ram[j]={`NOP};                            j=j+1;//
+/***** sum($7) must be 0xf830_00e6 *****/
+    
+/***** finalize  *****/
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`SW,   5'd0, 5'd7, 16'd0};        j=j+1;//     print(sum)
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//
+    cm_ram[j]={`NOP};                            j=j+1;//    
+    cm_ram[j]={`HALT};                           j=j+1;//     halt
+    cm_ram[j]={`NOP};                            j=j+1;//
+end
+/********************************************************************************/
