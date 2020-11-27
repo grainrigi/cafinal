@@ -72,7 +72,7 @@ module m_top #(
   always@(posedge r_clk) r_counter <= r_counter + 1;
 `ifdef CONTEST_V
   always@(posedge r_clk) if(!w_stall && p.MeWb_rd2 != 0 && p.WbRSLT != 0) $write("%x\n", p.WbRSLT);
-`elsif CONTEXT_VD
+`elsif CONTEST_VD
   always@(posedge r_clk) if(!w_stall && p.MeWb_rd2 != 0 && p.WbRSLT != 0) $write("%x %x %2x %x\n", r_counter, p.MeWb_pc, p.MeWb_rd2, p.WbRSLT);
 `else
    initial $write("time: r_pc     w_ir     w_rrs    w_rrt2   r_rslt2  r_led\n");
