@@ -143,6 +143,9 @@ module m_cached_memory #(
     localparam STATE_DRAM_WRITE     = 3'b010;
     localparam STATE_DRAM_READ      = 3'b011;
     localparam STATE_DRAM_READ_WAIT = 3'b100;
+    localparam ISSUE_NONE           = 2'b00;
+    localparam ISSUE_READ           = 2'b10;
+    localparam ISSUE_WRITE          = 2'b11;
 
     wire                        clk;
     wire                        rst;
@@ -168,12 +171,14 @@ module m_cached_memory #(
     wire [31:0]                 dmem_din;
     reg  [31:0]                 dmem_dout;
     wire                        dmem_stall;
+    wire                        dmem_jamming;
 
     reg  [3:0]                  dmem_wen_reg;
     reg  [31:0]                 dmem_addr_reg;
     reg  [31:0]                 dmem_din_reg;
 
     reg  [2:0]                  state = STATE_DRAM_CALIB;
+    reg  [1:0]                  issuing;
 
     integer i;
 
@@ -200,10 +205,11 @@ module m_cached_memory #(
         end
     end
 
-    assign dmem_stall = (state != STATE_DRAM_IDLE);
+    assign dmem_jamming = dram_busy && (dmem_ren || dmem_wen);
+    assign dmem_stall = (state == STATE_DRAM_READ_WAIT) || dmem_jamming;
 
-    assign dram_ren = ((state == STATE_DRAM_READ) && !dram_busy);
-    assign dram_wen = ((state == STATE_DRAM_WRITE) && !dram_busy);
+    assign dram_ren = ((issuing == ISSUE_READ) && !dram_busy);
+    assign dram_wen = ((issuing == ISSUE_WRITE) && !dram_busy);
     assign dram_addr = {dmem_addr_reg[APP_ADDR_WIDTH-1 : 4], 3'b000};
     assign dram_addr_column_offset = dmem_addr_reg[3:1];
 
@@ -290,6 +296,7 @@ module m_cached_memory #(
     always @(posedge clk) begin
         if (rst) begin
             state <= STATE_DRAM_CALIB;
+            issuing <= ISSUE_NONE;
             dmem_wen_reg <= 0;
             dmem_addr_reg <= 0;
             dmem_din_reg <= 0;
@@ -302,14 +309,15 @@ module m_cached_memory #(
                         state <= STATE_DRAM_IDLE;
                     end
                 end
-                STATE_DRAM_IDLE: begin
+                STATE_DRAM_IDLE: if (!dmem_jamming) begin
                     dmem_wen_reg <= dmem_wen;
                     dmem_addr_reg <= dmem_addr;
                     dmem_din_reg <= dmem_din;
                     if (dmem_wen != 0) begin
-                        state <= STATE_DRAM_WRITE;
+                      issuing <= ISSUE_WRITE;
                     end else if (dmem_ren) begin
-                        state <= STATE_DRAM_READ;
+                      issuing <= ISSUE_READ;
+                      state <= STATE_DRAM_READ_WAIT;
                     end
                 end
                 STATE_DRAM_WRITE: begin
@@ -328,6 +336,19 @@ module m_cached_memory #(
                         state <= STATE_DRAM_IDLE;
                     end
                 end
+            endcase
+
+            case (issuing)
+              ISSUE_READ: begin
+                if (!dram_busy) begin
+                  issuing <= ISSUE_NONE;
+                end
+              end
+              ISSUE_WRITE: begin
+                if (!dram_busy) begin
+                  issuing <= ISSUE_NONE;
+                end
+              end
             endcase
         end
     end
