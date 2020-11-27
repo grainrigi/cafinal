@@ -9,14 +9,14 @@
 `define DRAM_STATE_IDLE 0
 `define DRAM_STATE_READWAIT 1
 
-module m_amemory_d (w_clk, w_raddr, w_waddr, w_we, w_din, w_dout);
+module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    input  wire w_clk, w_we;
    input  wire [ 8:0] w_raddr, w_waddr; // read address & write address
    input  wire [31:0] w_din;
-   output wire [31:0] w_dout;
+   output reg  [31:0] r_dout;
    reg [31:0] cm_ram [0:511]; // 512 word (512 x 32bit) memory
    always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
-   assign w_dout = cm_ram[w_raddr];                            // read  port
+   always @(posedge w_clk) r_dout <= cm_ram[w_raddr];          // read  port
 
    integer i; initial for(i=0; i<100; i=i+1) cm_ram[i]=0; /* init by zero */
 `include "app/program_contest.txt"
@@ -47,13 +47,13 @@ module m_top #(
 `endif
    initial r_rst <= #200 1;
 
-   m_amemory_d m_imem (
+   m_memory_d m_imem (
      .w_clk(r_clk),
      .w_raddr(w_pc[10:2]),
      .w_waddr(w_pc[10:2]),
      .w_we(1'b0),
      .w_din(32'd0),
-     .w_dout(w_ir)
+     .r_dout(w_ir)
    );
 
    MIPSCORE p (

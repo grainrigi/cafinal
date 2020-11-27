@@ -54,14 +54,14 @@ module m_regfile (w_clk, w_rr1, w_rr2, w_wr, w_we, w_wdata, w_rdata1, w_rdata2);
 endmodule
 
 /********************************************************************************************/
-module m_amemory_d (w_clk, w_raddr, w_waddr, w_we, w_din, w_dout);
+module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    input  wire w_clk, w_we;
    input  wire [ 8:0] w_raddr, w_waddr; // read address & write address
    input  wire [31:0] w_din;
-   output wire [31:0] w_dout;
+   output wire [31:0] r_dout;
    reg [31:0] cm_ram [0:511]; // 512 word (512 x 32bit) memory
    always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
-   assign w_dout = cm_ram[w_raddr];                            // read  port
+   always @(posedge w_clk) r_dout <= cm_ram[w_raddr];                            // read  port
 endmodule
 
 /********************************************************************************************/
@@ -194,7 +194,7 @@ module main #(
    always @(posedge clk) if(r_wcnt==512) initdone <= 1;
 
    wire [31:0] I_IN;
-   m_amemory_d m_imem (clk, I_ADDR[10:2], r_wcnt, (!initdone & r_cnt==4), r_data, I_IN);
+   m_memory_d m_imem (clk, I_ADDR[10:2], r_wcnt, (!initdone & r_cnt==4), r_data, I_IN);
    /****************************************************************************************/
    reg r_rstx = 0; // reset_x signal for processor core
    always @(posedge clk) r_rstx <= (!rst & initdone);

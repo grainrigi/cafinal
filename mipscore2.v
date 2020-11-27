@@ -38,7 +38,7 @@ module MIPSCORE (
   reg [`ADDR] IfId_pc;         // IF-ID pipeline reg: program counter
   reg [`ADDR] IfId_pc4;        // IF-ID pipeline reg: program counter + 4
   reg         IfId_pr;         // IF-ID pipeline reg: is branch predicted (may invalidated on prediction failure)
-  reg [31:0]  IfId_ir;         // IF-ID pipeline reg: instruction
+  wire [31:0]  IfId_ir;         // IF-ID pipeline reg: instruction
 
   reg [`ADDR] IdId1_pc;        // ID-ID1 pipeline reg: program counter
   reg [`ADDR] IdId1_pc4;       // ID-ID1 pipeline reg: program counter + 4
@@ -133,6 +133,10 @@ module MIPSCORE (
   assign IfPC4 = IfPC + 4;
   assign IfNPC = (ExPR_FAIL) ? ((ExTAKEN) ? Id2Ex_tpc : Id2Ex_pc4) :
                  (PR_E) ? (PR_ISBR ? PR_ADDR : IfPC4) : IfPC4;
+
+  reg         r_if_stall;
+  reg  [31:0] r_stall_ir;
+  assign IfId_ir = (r_if_stall) ? r_stall_ir : I_IN;
   
   // program counter update
   always @(posedge CLK) begin
@@ -145,12 +149,15 @@ module MIPSCORE (
   end
 
   always @(posedge CLK) begin
-    if (!RST_X) {IfId_pc, IfId_pc4, IfId_pr, IfId_ir} <= #3 0;
+    if (!RST_X) {IfId_pc, IfId_pc4, IfId_pr, r_if_stall} <= #3 0;
     else if (!If_STALL) begin
       IfId_pc <= #3 IfPC;
       IfId_pc4 <= #3 IfPC4;
       IfId_pr  <= #3 PR_E && PR_ISBR; // 分岐をどっちに予測したか(分岐予測が提供されればその結果、提供されなければ必ずnot takenと予測)
-      IfId_ir  <= #3 I_IN;
+      r_if_stall <= #3 0;
+    end else if (!r_if_stall) begin
+      r_if_stall <= #3 1;
+      r_stall_ir <= #3 IfId_ir;
     end
   end
 
