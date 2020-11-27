@@ -163,6 +163,11 @@ module m_cached_memory #(
 
     reg  [APP_DATA_WIDTH-1:0]   dram_dout_reg;
 
+    wire                        cache_hit;
+    wire [APP_DATA_WIDTH-1:0]   cache_dout;
+    wire                        cache_install;
+    wire [APP_DATA_WIDTH-1:0]   cache_install_data;
+
     wire                        dmem_ren;
     wire [3:0]                  dmem_wen;
     wire [31:0]                 dmem_addr;
@@ -198,7 +203,7 @@ module m_cached_memory #(
         dmem_dout = 0;
         for (i = 0; i < 4; i = i + 1) begin // 4: APP_DATA_WIDTH/32
             if (dram_addr_column_offset[2:1] == i) begin
-                dmem_dout = dram_dout_reg[i*32 +: 32];
+                dmem_dout = cache_dout[i*32 +: 32];
             end
         end
     end
@@ -228,6 +233,21 @@ module m_cached_memory #(
             end
         end
     end
+
+    // cache
+    assign cache_install = (state == STATE_DRAM_READ_WAIT) && dram_dout_valid;
+    assign cache_install_data = dram_dout;
+
+    m_cache cache (
+      .i_clk(clk),
+      .i_addr(dmem_addr),
+      .i_we(dmem_wen != 0),
+      .i_data(dmem_din),
+      .o_data(cache_dout),
+      .i_bwe(cache_install),
+      .i_bdata(cache_install_data),
+      .o_hit(cache_hit)
+    );
 
     // in this implementation, user design is stalled when dram is accessed;
     // thus, when data are available, user design can always accept them
@@ -313,7 +333,7 @@ module m_cached_memory #(
                     dmem_din_reg <= dmem_din;
                     if (dmem_wen != 0) begin
                       issuing <= ISSUE_WRITE;
-                    end else if (dmem_ren) begin
+                    end else if (!cache_hit && dmem_ren) begin
                       issuing <= ISSUE_READ;
                       state <= STATE_DRAM_READ_WAIT;
                     end
