@@ -2,97 +2,12 @@
 `default_nettype none
 `define HALT {6'h4, 5'd0, 5'd0, 16'hffff} // L1: beq  $0, $0, L1
 
-`include "mipscore.v"
+`include "cached_memory.v"
+
+`include "mipscore2.v"
 
 `define DRAM_STATE_IDLE 0
 `define DRAM_STATE_READWAIT 1
-
-`ifdef NODELAY
-module m_pseudo_dram(
-  input wire i_clk,
-  input wire [`ADDR] i_addr,
-  input wire [31:0] i_data,
-  output wire [31:0] o_data,
-  input wire [3:0] i_we,
-  input wire i_oe,
-  output wire o_stall
-);
-  reg [31:0] r_read;
-  wire [31:0] w_read;
-  assign o_data = r_read;
-  always@(posedge i_clk) if (i_oe) r_read <= w_read;
-  m_amemory_d_clean m_ram (
-    .w_clk(i_clk),
-    .w_raddr(i_addr[12:2]),
-    .w_waddr(i_addr[12:2]),
-    .w_we(i_we != 0),
-    .w_din(i_data),
-    .w_dout(w_read)
-  );
-  assign o_stall = 0;
-endmodule
-`else
-module m_pseudo_dram(
-  input wire i_clk,
-  input wire [`ADDR] i_addr,
-  input wire [31:0] i_data,
-  output wire [31:0] o_data,
-  input wire [3:0] i_we,
-  input wire i_oe,
-  output wire o_stall
-);
-  // read delay
-  reg         r_state = `DRAM_STATE_IDLE;
-  reg [3:0]   r_wait = 0;
-  reg [10:0] r_addr = 0;
-  reg [31:0]  r_read = 0;
-
-  always @(posedge i_clk) begin
-    case (r_state)
-      `DRAM_STATE_IDLE: begin
-        if (i_oe) begin
-          r_addr <= i_addr[12:2];
-          r_wait <= 15;
-          r_state <= `DRAM_STATE_READWAIT;
-        end
-      end
-      `DRAM_STATE_READWAIT: begin
-        if (r_wait > 0) r_wait <= r_wait - 1;
-        else begin
-          r_read <= w_read;
-          r_state <= `DRAM_STATE_IDLE;
-        end
-      end
-    endcase
-  end
-
-  // in/out
-  assign o_data = r_read;
-  assign o_stall = r_state != `DRAM_STATE_IDLE;
-
-  // memory
-  wire [31:0]  w_read;
-
-  m_amemory_d_clean m_ram (
-    .w_clk(i_clk),
-    .w_raddr(r_addr),
-    .w_waddr(i_addr[12:2]),
-    .w_we(i_we != 0),
-    .w_din(i_data),
-    .w_dout(w_read)
-  );
-endmodule
-`endif
-
-module m_amemory_d_clean (w_clk, w_raddr, w_waddr, w_we, w_din, w_dout);
-   input  wire w_clk, w_we;
-   input  wire [10:0] w_raddr, w_waddr; // read address & write address
-   input  wire [31:0] w_din;
-   output wire [31:0] w_dout;
-   reg [31:0] cm_ram [0:2047]; // 2048 word (2048 x 32bit) memory
-   always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
-   assign w_dout = cm_ram[w_raddr];                            // read  port
-endmodule
 
 module m_amemory_d (w_clk, w_raddr, w_waddr, w_we, w_din, w_dout);
    input  wire w_clk, w_we;
@@ -107,7 +22,17 @@ module m_amemory_d (w_clk, w_raddr, w_waddr, w_we, w_din, w_dout);
 `include "app/program_contest.txt"
 endmodule
 
-module m_top (); 
+module m_top #(
+              parameter DDR3_DQ_WIDTH   = 16,
+              parameter DDR3_DQS_WIDTH  = 2,
+              parameter DDR3_ADDR_WIDTH = 14,
+              parameter DDR3_BA_WIDTH   = 3,
+              parameter DDR3_DM_WIDTH   = 2,
+              parameter APP_ADDR_WIDTH  = 28,
+              parameter APP_CMD_WIDTH   = 3,
+              parameter APP_DATA_WIDTH  = 128,
+              parameter APP_MASK_WIDTH  = 16)
+ (); 
    reg r_clk=0; initial forever #50 r_clk = ~r_clk;
    reg r_rst=0;
    wire [`ADDR] w_pc, w_daddr;
@@ -130,17 +55,8 @@ module m_top ();
      .w_din(32'd0),
      .w_dout(w_ir)
    );
-   m_pseudo_dram m_dmem (
-     .i_clk(r_clk),
-     .i_addr(w_daddr),
-     .i_data(w_wdata),
-     .o_data(w_rdata),
-     .i_we(w_we),
-     .i_oe(w_oe),
-     .o_stall(w_stall)
-   );
 
-   MIPSCORE p (
+   MIPSCORE2 p (
      .CLK(r_clk),
      .RST_X(r_rst),
      .STALL(w_stall),
@@ -160,8 +76,50 @@ module m_top ();
 `else
    initial $write("time: r_pc     w_ir     w_rrs    w_rrt2   r_rslt2  r_led\n");
    always@(posedge r_clk) $write("%4d: %x %x %x %x %x %x\n", $time / 100,
-                         // w_pc, w_ir, p.Id1RRS, p.Id1RRT, p.WbRSLT, p.MeWb_rd2);
-                         p.pc, p.IfId_ir, p.IdRRS, p.IdRRT, p.MaWb_rslt, p.MaWb_dst);
+                         w_pc, w_ir, p.Id1RRS, p.Id1RRT, p.WbRSLT, p.MeWb_rd2);
+                         // p.pc, p.IfId_ir, p.IdRRS, p.IdRRT, p.MaWb_rslt, p.MaWb_dst);
 `endif
    always@(posedge r_clk) if(w_ir==`HALT) $finish();
+
+   // dram
+   wire        dmem_init_done;
+   wire [3:0]  dmem_init_wen;
+   wire [31:0] dmem_init_addr;
+   wire [31:0] dmem_init_din;
+   wire        dmem_ren;
+   wire [3:0]  dmem_wen;
+   wire [31:0] dmem_addr;
+   wire [31:0] dmem_din;
+   wire [31:0] dmem_dout;
+   wire        dmem_stall;
+
+   assign dmem_wen = w_we;
+   assign dmem_addr = {w_daddr[31:2], 2'b00};  // dmem_addr must be 4-byte aligned
+   assign dmem_din = w_wdata;
+   assign dmem_ren = w_oe;
+   assign w_rdata  = dmem_dout;
+   assign w_stall  = dmem_stall;
+   assign dmem_init_done = 1; //initdone;
+   assign dmem_init_wen  = 0; //{4{initwe}};
+   assign dmem_init_addr = 0; //initaddr;
+   assign dmem_init_din  = 0; //initdata;
+
+   m_cached_memory #(
+                .APP_ADDR_WIDTH(APP_ADDR_WIDTH),
+                .APP_CMD_WIDTH(APP_CMD_WIDTH),
+                .APP_DATA_WIDTH(APP_DATA_WIDTH),
+                .APP_MASK_WIDTH(APP_MASK_WIDTH))
+   dmem (
+         .i_clk(r_clk),
+         // user design interface signals
+         .i_dmem_init_done(dmem_init_done),
+         .i_dmem_init_wen(dmem_init_wen),
+         .i_dmem_init_addr(dmem_init_addr),
+         .i_dmem_init_data(dmem_init_din),
+         .i_dmem_ren(dmem_ren),
+         .i_dmem_wen(dmem_wen),
+         .i_dmem_addr(dmem_addr),
+         .i_dmem_data(dmem_din),
+         .o_dmem_data(dmem_dout),
+         .o_dmem_stall(dmem_stall));
 endmodule
