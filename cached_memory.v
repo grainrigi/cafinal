@@ -176,6 +176,7 @@ module m_cached_memory #(
 
     wire                        cache_hit;
     wire [APP_DATA_WIDTH-1:0]   cache_dout;
+    wire [1:0]                  cache_bindex;
     wire                        cache_install;
     wire [APP_DATA_WIDTH-1:0]   cache_install_data;
 
@@ -188,6 +189,7 @@ module m_cached_memory #(
     reg  [31:0]                 dmem_dout;
     wire                        dmem_stall;
     wire                        dmem_jamming;
+    wire [1:0]                  dmem_bindex;
 
     reg                         dmem_ren_reg;
     reg  [3:0]                  dmem_wen_reg;
@@ -219,7 +221,7 @@ module m_cached_memory #(
     always @(*) begin
         dmem_dout = 0;
         for (i = 0; i < 4; i = i + 1) begin // 4: APP_DATA_WIDTH/32
-            if (dram_addr_column_offset[2:1] == i) begin
+            if (dmem_bindex == i) begin
                 dmem_dout = dmem_raw_data[i*32 +: 32];
             end
         end
@@ -237,6 +239,8 @@ module m_cached_memory #(
     assign dram_wen = current_task == TASK_WRITE_ISSUE;
     assign dram_addr = {dmem_addr_reg[APP_ADDR_WIDTH-1 : 4], 3'b000};
     assign dram_addr_column_offset = dmem_addr_reg[3:1];
+
+    assign dmem_bindex = (current_task == TASK_COMPLETE_READ) ? dram_addr_column_offset[2:1] : cache_bindex;
 
     always @(*) begin
         dram_din = 0;
@@ -269,7 +273,8 @@ module m_cached_memory #(
       .o_data(cache_dout),
       .i_bwe(cache_install),
       .i_bdata(cache_install_data),
-      .o_hit(cache_hit)
+      .o_hit(cache_hit),
+      .o_bindex(cache_bindex)
     );
 
     // in this implementation, user design is stalled when dram is accessed;
