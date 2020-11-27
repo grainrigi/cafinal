@@ -5,6 +5,7 @@
 /******************************************************************************************************/
 /* MipsCore: 32bit-MIPS 5-stage pipelining processor                                                  */
 /******************************************************************************************************/
+`ifdef USE_MIPSCORE
 module MIPSCORE(CLK, RST_X, STALL, I_ADDR, I_IN, D_ADDR, D_IN, D_OUT, D_OE, D_WE);
     input  wire         CLK, RST_X, STALL;
     output wire [`ADDR] I_ADDR, D_ADDR;
@@ -272,3 +273,4 @@ module FORWARDING(SRC, DIN0, DST1, DIN1, DST2, DIN2, DOUT);
     assign DOUT = (SRC!=0 && DST1==SRC) ? DIN1 : (SRC!=0 && DST2==SRC) ? DIN2 : DIN0;
 endmodule
 /******************************************************************************************************/
+`endif

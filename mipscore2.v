@@ -12,7 +12,8 @@
 `define LW 6'h23
 `define SW 6'h2b
 
-module MIPSCORE2 (
+`ifdef USE_MIPSCORE2
+module MIPSCORE (
   input wire CLK,
   input wire RST_X,
   input wire STALL,
@@ -445,3 +446,4 @@ module FORWARDING_SINGLE(SRC, DIN0, DST1, DIN1, DOUT);
     assign DOUT = (SRC!=0 && DST1==SRC) ? DIN1 : DIN0;
 endmodule
 /******************************************************************************************************/
+`endif

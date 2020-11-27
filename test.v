@@ -56,7 +56,7 @@ module m_top #(
      .w_dout(w_ir)
    );
 
-   MIPSCORE2 p (
+   MIPSCORE p (
      .CLK(r_clk),
      .RST_X(r_rst),
      .STALL(w_stall),
