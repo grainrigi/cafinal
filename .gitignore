@@ -1,2 +1,7 @@
 dram/
 clk_wiz_1
+trace*.txt
+diff.txt
+log.txt
+a.out
+*.vcd
