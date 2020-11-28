@@ -67,25 +67,25 @@
 */
 module m_predictor (w_clk, w_baddr, w_br, w_bdst, w_be, w_paddr, w_pr, w_pdst, w_pre);
   input  wire        w_clk;
-  input  wire [`ADDR] w_baddr, w_bdst;
+  input  wire [`HADDR] w_baddr, w_bdst;
   input  wire        w_br, w_be;
-  input  wire [`ADDR] w_paddr;
+  input  wire [`HADDR] w_paddr;
   output wire        w_pr;
-  output wire [`ADDR] w_pdst;
+  output wire [`HADDR] w_pdst;
   output wire        w_pre;
 
   // 履歴の保存領域
-  reg [`ADDR] r_addr[0:1];     // 分岐元アドレス(キャッシュのキー)
+  reg [`HADDR] r_addr[0:1];     // 分岐元アドレス(キャッシュのキー)
   reg        r_priority[0:1]; // 各スロットの優先度(0が一番高く、1ならば次の新規書き込みで破棄)
-  reg [`ADDR] r_dst[0:1];      // 分岐先アドレス
+  reg [`HADDR] r_dst[0:1];      // 分岐先アドレス
   reg [1:0]  r_predict[0:1];  // 分岐情報(2ビット飽和カウンタ)
   generate genvar g;
     for (g = 0; g < 2; g = g + 1) begin : Gen
       // 変に反応しないように無効な値を入れておく
-      initial r_addr[g] = ~(`ADDR_WIDTH'd0);
+      initial r_addr[g] = ~(`HADDR_WIDTH'd0);
       // 優先度が最初から振られてないと誤動作するので
       initial r_priority[g] = g;
-      initial r_dst[g] = ~(`ADDR_WIDTH'd0);
+      initial r_dst[g] = ~(`HADDR_WIDTH'd0);
       initial r_predict[g] = 0;
     end
   endgenerate

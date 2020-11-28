@@ -23,8 +23,8 @@ endmodule
 module m_cache 
 (
   input  wire         i_clk,   // clock
-  input  wire [`ADDR] i_raddr, // read address
-  input  wire [`ADDR] i_waddr, // write address
+  input  wire [`EADDR] i_raddr, // read address
+  input  wire [`EADDR] i_waddr, // write address
   input  wire         i_we,    // write enable
   input  wire [31:0]  i_data,  // write data
   output reg  [127:0] o_data,  // read data
@@ -35,23 +35,23 @@ module m_cache
 );
   localparam INDEX_WIDTH = 8;
   localparam NUM_ENTRIES = 2 ** INDEX_WIDTH;
-  localparam TAG_WIDTH   = `ADDR_WIDTH - INDEX_WIDTH - 4;
+  localparam TAG_WIDTH   = `EADDR_WIDTH - INDEX_WIDTH - 4;
   localparam EWIDTH = 1 + TAG_WIDTH + 128;
   reg  [TAG_WIDTH:0] meta_ram[0:NUM_ENTRIES-1]; // 256 entries
 
   // read no delay (for metadata reading)
-  wire [TAG_WIDTH-1:0]   w_ritag   = i_raddr[`ADDR_WIDTH-1:`ADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [TAG_WIDTH-1:0]   w_ritag   = i_raddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_rindex  = i_raddr[INDEX_WIDTH+3:4];                      // entry index
   wire [1:0]             w_rbindex = i_raddr[3:2];                                  // block index
 
   // write no delay (for cache install)
-  wire [TAG_WIDTH-1:0]   w_witag   = i_waddr[`ADDR_WIDTH-1:`ADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [TAG_WIDTH-1:0]   w_witag   = i_waddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_windex  = i_waddr[INDEX_WIDTH+3:4];                      // entry index
 
   // read delay (for hit judge)
   reg  [TAG_WIDTH:0]     r_rmeta;
-  reg  [`ADDR]           r_raddr;
-  wire [TAG_WIDTH-1:0]   w_dritag  = r_raddr[`ADDR_WIDTH-1:`ADDR_WIDTH-TAG_WIDTH];
+  reg  [`EADDR]           r_raddr;
+  wire [TAG_WIDTH-1:0]   w_dritag  = r_raddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];
   wire [TAG_WIDTH-1:0]   w_dretag   = r_rmeta[TAG_WIDTH-1:0];
   wire                   w_drhit    = r_rmeta[TAG_WIDTH] && (w_dretag == w_dritag);
   wire [1:0]             w_drbindex = r_raddr[3:2];
@@ -59,11 +59,11 @@ module m_cache
   assign o_bindex = w_drbindex;
 
   // write delay (for sw)
-  reg  [`ADDR]           r_waddr;
+  reg  [`EADDR]           r_waddr;
   reg  [31:0]            r_wdata;
   reg                    r_we;
   reg                    r_iwe;
-  wire [TAG_WIDTH-1:0]   w_dwitag   = r_waddr[`ADDR_WIDTH-1:`ADDR_WIDTH-TAG_WIDTH];
+  wire [TAG_WIDTH-1:0]   w_dwitag   = r_waddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];
   wire [INDEX_WIDTH-1:0] w_dwindex  = r_waddr[INDEX_WIDTH+3:4];
   wire [1:0]             w_dwbindex = r_waddr[3:2];
 

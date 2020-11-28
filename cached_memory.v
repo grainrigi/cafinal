@@ -139,22 +139,15 @@ module m_cached_memory #(
      output wire                         o_dmem_stall);
 
     localparam TASK_WAIT_CALIB         = 4'b0000;
-    localparam TASK_UNWAIT_CALIB       = 4'b0001;
+    localparam TASK_IDLE               = 4'b0001;
     localparam TASK_CACHE_READ         = 4'b0010;
     localparam TASK_WRITE_THROUGH      = 4'b0011;
     localparam TASK_WRITE_ISSUE_STALL  = 4'b0100;
     localparam TASK_READ_ISSUE_STALL   = 4'b0101;
-    localparam TASK_WRITE_ISSUE        = 4'b0110;
+    localparam TASK_READ_WAIT          = 4'b0110;
     localparam TASK_READ_ISSUE         = 4'b0111;
-    localparam TASK_READ_WAIT          = 4'b1000;
+    localparam TASK_WRITE_ISSUE        = 4'b1000;
     localparam TASK_COMPLETE_READ      = 4'b1001;
-    localparam TASK_IDLE               = 4'b1010;
-
-    localparam STATE_DRAM_IDLE      = 2'b01;
-    localparam STATE_DRAM_READ_WAIT = 2'b10;
-    localparam ISSUE_NONE           = 2'b00;
-    localparam ISSUE_READ           = 2'b10;
-    localparam ISSUE_WRITE          = 2'b11;
 
     wire                        clk;
     wire                        rst;
@@ -357,11 +350,8 @@ module m_cached_memory #(
     end
 
     always @(*) begin
-      if (prev_task == TASK_WAIT_CALIB) begin
-        if (dram_init_calib_complete)
-          current_task = TASK_UNWAIT_CALIB;
-        else
-          current_task = TASK_WAIT_CALIB;
+      if (prev_task == TASK_WAIT_CALIB && !dram_init_calib_complete) begin
+        current_task = TASK_WAIT_CALIB;
       end else if (prev_task == TASK_CACHE_READ && !cache_hit) begin
         if (dram_busy)
           current_task = TASK_READ_ISSUE_STALL;

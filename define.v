@@ -14,8 +14,24 @@
 `define SERIAL_WCNT  50 // 1M baud UART wait count
 /******************************************************************************************************/
 `define WORD  31:0                 // 1 word is 32 bit
-`define ADDR  31:0                 // Address Range of 32bit
-`define ADDR_WIDTH 32
+`define IADDR 8:0
+`define IADDR_WIDTH 9
+`ifdef IADDR_BYTE_ADDRESSABLE
+  `define HADDR 10:0
+  `define HADDR_WIDTH 11
+  `define ISLICE 10:2
+  `define PC_STRIDE 4
+`else
+  `define HADDR 8:0
+  `define HADDR_WIDTH 9
+  `define ISLICE 8:0
+  `define PC_STRIDE 1
+`endif
+`define DADDR  29:0                 // Address Range of 32bit
+`define DADDR_WIDTH 30
+`define EADDR  31:0
+`define EADDR_WIDTH 32
+`define DSLICE 31:2
 
 /* Instruction Attribute Definition                                                                   */
 /******************************************************************************************************/

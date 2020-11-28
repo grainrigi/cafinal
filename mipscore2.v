@@ -17,9 +17,9 @@ module MIPSCORE (
   input wire CLK,
   input wire RST_X,
   input wire STALL,
-  output wire [`ADDR] I_ADDR,
+  output wire [`HADDR] I_ADDR,
   input wire [31:0] I_IN,
-  output wire [`ADDR] D_ADDR,
+  output wire [`EADDR] D_ADDR,
   input wire [31:0] D_IN,
   output wire [31:0] D_OUT,
   output wire D_OE,
@@ -35,102 +35,102 @@ module MIPSCORE (
   wire Me_STALL  = STALL;
   wire Wb_STALL  = STALL;
 
-  reg [`ADDR] IfId_pc;         // IF-ID pipeline reg: program counter
-  reg [`ADDR] IfId_pc4;        // IF-ID pipeline reg: program counter + 4
-  reg         IfId_pr;         // IF-ID pipeline reg: is branch predicted (may invalidated on prediction failure)
+  reg [`HADDR] IfId_pc;         // IF-ID pipeline reg: program counter
+  reg [`HADDR] IfId_pc4;        // IF-ID pipeline reg: program counter + 4
+  reg          IfId_pr;         // IF-ID pipeline reg: is branch predicted (may invalidated on prediction failure)
   wire [31:0]  IfId_ir;         // IF-ID pipeline reg: instruction
 
-  reg [`ADDR] IdId1_pc;        // ID-ID1 pipeline reg: program counter
-  reg [`ADDR] IdId1_pc4;       // ID-ID1 pipeline reg: program counter + 4
-  reg         IdId1_pr;        // ID-ID1 pipeline reg: is branch predicted (may invalidated on prediction failure)
-  reg         IdId1_add;       // ID-ID1 pipeline reg: add
-  reg         IdId1_addi;      // ID-ID1 pipeline reg: addi
+  reg [`HADDR] IdId1_pc;        // ID-ID1 pipeline reg: program counter
+  reg [`HADDR] IdId1_pc4;       // ID-ID1 pipeline reg: program counter + 4
+  reg          IdId1_pr;        // ID-ID1 pipeline reg: is branch predicted (may invalidated on prediction failure)
+  reg          IdId1_add;       // ID-ID1 pipeline reg: add
+  reg          IdId1_addi;      // ID-ID1 pipeline reg: addi
 `ifdef ENABLE_SHIFT
-  reg         IdId1_sllv;      // ID-ID1 pipeline reg: sllv
-  reg         IdId1_srlv;      // ID-ID1 pipeline reg: srlv
+  reg          IdId1_sllv;      // ID-ID1 pipeline reg: sllv
+  reg          IdId1_srlv;      // ID-ID1 pipeline reg: srlv
 `endif
-  reg         IdId1_beq;       // ID-ID1 pipeline reg: beq
-  reg         IdId1_bne;       // ID-ID1 pipeline reg: bne
-  reg         IdId1_sw;        // ID-ID1 pipeline reg: sw
-  reg         IdId1_lw;        // ID-ID1 pipeline reg: lw
-  reg [4:0]   IdId1_rs;        // ID-ID1 pipeline reg: RS
-  reg [4:0]   IdId1_rt;        // ID-ID1 pipeline reg: RT
-  reg [4:0]   IdId1_rd2;       // ID-ID1 pipeline reg: RD
-  reg [31:0]  IdId1_imm32;     // ID-ID1 pipeline reg: IMM32
-  reg [`ADDR] IdId1_tpc;       // ID-ID1 pipeline reg: taken pc (only valid for beq/bne)
+  reg          IdId1_beq;       // ID-ID1 pipeline reg: beq
+  reg          IdId1_bne;       // ID-ID1 pipeline reg: bne
+  reg          IdId1_sw;        // ID-ID1 pipeline reg: sw
+  reg          IdId1_lw;        // ID-ID1 pipeline reg: lw
+  reg [4:0]    IdId1_rs;        // ID-ID1 pipeline reg: RS
+  reg [4:0]    IdId1_rt;        // ID-ID1 pipeline reg: RT
+  reg [4:0]    IdId1_rd2;       // ID-ID1 pipeline reg: RD
+  reg [31:0]   IdId1_imm32;     // ID-ID1 pipeline reg: IMM32
+  reg [`HADDR] IdId1_tpc;       // ID-ID1 pipeline reg: taken pc (only valid for beq/bne)
 
-  reg [`ADDR] Id1Id2_pc;       // ID1-ID2 pipeline reg: program counter
-  reg [`ADDR] Id1Id2_pc4;      // ID1-ID2 pipeline reg: program counter + 4
-  reg         Id1Id2_pr;       // ID1-ID2 pipeline reg: is branch predicted (may invalidated on prediction failure)
-  reg         Id1Id2_add;      // ID1-ID2 pipeline reg: add
-  reg         Id1Id2_addi;     // ID1-ID2 pipeline reg: addi
+  reg [`HADDR] Id1Id2_pc;       // ID1-ID2 pipeline reg: program counter
+  reg [`HADDR] Id1Id2_pc4;      // ID1-ID2 pipeline reg: program counter + 4
+  reg          Id1Id2_pr;       // ID1-ID2 pipeline reg: is branch predicted (may invalidated on prediction failure)
+  reg          Id1Id2_add;      // ID1-ID2 pipeline reg: add
+  reg          Id1Id2_addi;     // ID1-ID2 pipeline reg: addi
 `ifdef ENABLE_SHIFT
-  reg         Id1Id2_sllv;     // ID1-ID2 pipeline reg: sllv
-  reg         Id1Id2_srlv;     // ID1-ID2 pipeline reg: srlv
+  reg          Id1Id2_sllv;     // ID1-ID2 pipeline reg: sllv
+  reg          Id1Id2_srlv;     // ID1-ID2 pipeline reg: srlv
 `endif
-  reg         Id1Id2_beq;      // ID1-ID2 pipeline reg: beq
-  reg         Id1Id2_bne;      // ID1-ID2 pipeline reg: bne
-  reg         Id1Id2_sw;       // ID1-ID2 pipeline reg: sw
-  reg         Id1Id2_lw;       // ID1-ID2 pipeline reg: lw
-  reg [4:0]   Id1Id2_rs;       // ID1-ID2 pipeline reg: RS
-  reg [4:0]   Id1Id2_rt;       // ID1-ID2 pipeline reg: RT
-  reg [4:0]   Id1Id2_rd2;      // ID1-ID2 pipeline reg: RD
-  reg [31:0]  Id1Id2_imm32;    // ID1-ID2 pipeline reg: IMM32
-  reg [`ADDR] Id1Id2_tpc;      // ID1-ID2 pipeline reg: taken pc (only valid for beq/bne)
-  reg [31:0]  Id1Id2_rrs;      // ID1-ID2 pipeline reg: value of RS
-  reg [31:0]  Id1Id2_rrt;      // ID1-ID2 pipeline reg: value of RT
+  reg          Id1Id2_beq;      // ID1-ID2 pipeline reg: beq
+  reg          Id1Id2_bne;      // ID1-ID2 pipeline reg: bne
+  reg          Id1Id2_sw;       // ID1-ID2 pipeline reg: sw
+  reg          Id1Id2_lw;       // ID1-ID2 pipeline reg: lw
+  reg [4:0]    Id1Id2_rs;       // ID1-ID2 pipeline reg: RS
+  reg [4:0]    Id1Id2_rt;       // ID1-ID2 pipeline reg: RT
+  reg [4:0]    Id1Id2_rd2;      // ID1-ID2 pipeline reg: RD
+  reg [31:0]   Id1Id2_imm32;    // ID1-ID2 pipeline reg: IMM32
+  reg [`IADDR] Id1Id2_tpc;      // ID1-ID2 pipeline reg: taken pc (only valid for beq/bne)
+  reg [31:0]   Id1Id2_rrs;      // ID1-ID2 pipeline reg: value of RS
+  reg [31:0]   Id1Id2_rrt;      // ID1-ID2 pipeline reg: value of RT
 
-  reg [`ADDR] Id2Ex_pc;        // ID2-EX pipeline reg: program counter
-  reg [`ADDR] Id2Ex_pc4;       // ID2-EX pipeline reg: program counter + 4
-  reg         Id2Ex_pr;        // ID2-EX pipeline reg: is branch predicted (may invalidated on prediction failure)
-  reg         Id2Ex_add;       // ID2-EX pipeline reg: add
-  reg         Id2Ex_addi;      // ID2-EX pipeline reg: addi
+  reg [`HADDR] Id2Ex_pc;        // ID2-EX pipeline reg: program counter
+  reg [`HADDR] Id2Ex_pc4;       // ID2-EX pipeline reg: program counter + 4
+  reg          Id2Ex_pr;        // ID2-EX pipeline reg: is branch predicted (may invalidated on prediction failure)
+  reg          Id2Ex_add;       // ID2-EX pipeline reg: add
+  reg          Id2Ex_addi;      // ID2-EX pipeline reg: addi
 `ifdef ENABLE_SHIFT
-  reg         Id2Ex_sllv;      // ID2-EX pipeline reg: sllv
-  reg         Id2Ex_srlv;      // ID2-EX pipeline reg: srlv
+  reg          Id2Ex_sllv;      // ID2-EX pipeline reg: sllv
+  reg          Id2Ex_srlv;      // ID2-EX pipeline reg: srlv
 `endif
-  reg         Id2Ex_beq;       // ID2-EX pipeline reg: beq
-  reg         Id2Ex_bne;       // ID2-EX pipeline reg: bne
-  reg         Id2Ex_sw;        // ID2-EX pipeline reg: sw
-  reg         Id2Ex_lw;        // ID2-EX pipeline reg: lw
-  reg [4:0]   Id2Ex_rs;        // ID2-EX pipeline reg: RS
-  reg [4:0]   Id2Ex_rt;        // ID2-EX pipeline reg: RT
-  reg [4:0]   Id2Ex_rd2;       // ID2-EX pipeline reg: RD
-  reg [31:0]  Id2Ex_imm32;     // ID2-EX pipeline reg: IMM32
-  reg [`ADDR] Id2Ex_tpc;       // ID2-EX pipeline reg: taken pc (only valid for beq/bne)
-  reg [31:0]  Id2Ex_rrs;       // ID2-EX pipeline reg: value of RS
-  reg [31:0]  Id2Ex_rrt;       // ID2-EX pipeline reg: value of RT
-  reg [31:0]  Id2Ex_rrt2;      // ID2-EX pipeline reg: value of second operand
-  reg         Id2Ex_rsfwme;    // ID2-EX pipeline reg: forwarding necessity of RS (EX -> ME)
-  reg         Id2Ex_rsfwwb;    // ID2-EX pipeline reg: forwarding necessity of RS (EX -> WB)
-  reg         Id2Ex_rtfwme;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> ME)
-  reg         Id2Ex_rtfwwb;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> WB)
+  reg          Id2Ex_beq;       // ID2-EX pipeline reg: beq
+  reg          Id2Ex_bne;       // ID2-EX pipeline reg: bne
+  reg          Id2Ex_sw;        // ID2-EX pipeline reg: sw
+  reg          Id2Ex_lw;        // ID2-EX pipeline reg: lw
+  reg [4:0]    Id2Ex_rs;        // ID2-EX pipeline reg: RS
+  reg [4:0]    Id2Ex_rt;        // ID2-EX pipeline reg: RT
+  reg [4:0]    Id2Ex_rd2;       // ID2-EX pipeline reg: RD
+  reg [31:0]   Id2Ex_imm32;     // ID2-EX pipeline reg: IMM32
+  reg [`HADDR] Id2Ex_tpc;       // ID2-EX pipeline reg: taken pc (only valid for beq/bne)
+  reg [31:0]   Id2Ex_rrs;       // ID2-EX pipeline reg: value of RS
+  reg [31:0]   Id2Ex_rrt;       // ID2-EX pipeline reg: value of RT
+  reg [31:0]   Id2Ex_rrt2;      // ID2-EX pipeline reg: value of second operand
+  reg          Id2Ex_rsfwme;    // ID2-EX pipeline reg: forwarding necessity of RS (EX -> ME)
+  reg          Id2Ex_rsfwwb;    // ID2-EX pipeline reg: forwarding necessity of RS (EX -> WB)
+  reg          Id2Ex_rtfwme;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> ME)
+  reg          Id2Ex_rtfwwb;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> WB)
 
-  reg [`ADDR] ExMe_pc;         // EX-ME pipeline reg: program counter (just for debugging)
-  reg         ExMe_sw;         // EX-ME pipeline reg: sw
-  reg         ExMe_lw;         // EX-ME pipeline reg: lw
-  reg [4:0]   ExMe_rs;         // EX-ME pipeline reg: RS
-  reg [4:0]   ExMe_rt;         // EX-ME pipeline reg: RT
-  reg [4:0]   ExMe_rd2;        // EX-ME pipeline reg: destination of writeback
-  reg [31:0]  ExMe_rrt;        // EX-ME pipeline reg: value of RT (for sw)
-  reg [31:0]  ExMe_rslt;       // EX-ME pipeline reg: calculation result (result of arithmetic op or store address)
+  reg [`HADDR] ExMe_pc;         // EX-ME pipeline reg: program counter (just for debugging)
+  reg          ExMe_sw;         // EX-ME pipeline reg: sw
+  reg          ExMe_lw;         // EX-ME pipeline reg: lw
+  reg [4:0]    ExMe_rs;         // EX-ME pipeline reg: RS
+  reg [4:0]    ExMe_rt;         // EX-ME pipeline reg: RT
+  reg [4:0]    ExMe_rd2;        // EX-ME pipeline reg: destination of writeback
+  reg [31:0]   ExMe_rrt;        // EX-ME pipeline reg: value of RT (for sw)
+  reg [31:0]   ExMe_rslt;       // EX-ME pipeline reg: calculation result (result of arithmetic op or store address)
 
-  reg [`ADDR] MeWb_pc;         // ME-WB pipeline reg: program counter (just for debugging)
-  reg         MeWb_lw;         // ME-WB pipeline reg: lw
-  reg [4:0]   MeWb_rd2;        // ME-WB pipeline reg: destination of writeback
-  reg [31:0]  MeWb_rslt;       // ME-WB pipeline reg: calculation result (result of arithmetic op or store address)
+  reg [`HADDR] MeWb_pc;         // ME-WB pipeline reg: program counter (just for debugging)
+  reg          MeWb_lw;         // ME-WB pipeline reg: lw
+  reg [4:0]    MeWb_rd2;        // ME-WB pipeline reg: destination of writeback
+  reg [31:0]   MeWb_rslt;       // ME-WB pipeline reg: calculation result (result of arithmetic op or store address)
 
   /**************************** IF stage **********************************/
-  wire         ExTAKEN;    // (EX) branch is taken or not
-  wire         PR_E;       // (IF) prediction: cache hit
-  wire         PR_ISBR;    // (IF) prediction: cache value (only valid when PR_E asserts)
-  wire [`ADDR]  PR_ADDR;    // (IF) prediction: branch dest
-  reg  [`ADDR]  IfPC;       // (IF) program counter (the instruction on this address will be fetched to IfId_ir on next clock)
-  wire [`ADDR]  IfPC4;      // (IF) program counter + 4
-  wire [`ADDR]  IfNPC;      // (IF) next program counter (the value of IfPC on next clock)
+  wire           ExTAKEN;    // (EX) branch is taken or not
+  wire           PR_E;       // (IF) prediction: cache hit
+  wire           PR_ISBR;    // (IF) prediction: cache value (only valid when PR_E asserts)
+  wire [`HADDR]  PR_ADDR;    // (IF) prediction: branch dest
+  reg  [`HADDR]  IfPC;       // (IF) program counter (the instruction on this address will be fetched to IfId_ir on next clock)
+  wire [`HADDR]  IfPC4;      // (IF) program counter + 4
+  wire [`HADDR]  IfNPC;      // (IF) next program counter (the value of IfPC on next clock)
 
   assign I_ADDR = IfPC;
-  assign IfPC4 = IfPC + 4;
+  assign IfPC4 = IfPC + `PC_STRIDE;
   assign IfNPC = (ExPR_FAIL) ? ((ExTAKEN) ? Id2Ex_tpc : Id2Ex_pc4) :
                  (PR_E) ? (PR_ISBR ? PR_ADDR : IfPC4) : IfPC4;
 
@@ -185,8 +185,8 @@ module MIPSCORE (
   assign IdRD2 = (IdBEQ || IdBNE || IdSW) ? 0 : (IdOP != 0) ? IdRT : IdRD;
 
   
-  wire [10:0] IdTPC = IfId_pc4 + {IdIMM32[29:0], 2'b0};
-  wire        IdWE  = IdOP>6'h27;
+  wire [`HADDR] IdTPC = IfId_pc4 + (IdIMM32 << (`HADDR_WIDTH - `IADDR_WIDTH));
+  wire          IdWE  = IdOP>6'h27;
 
   always @(posedge CLK) begin
     if (!RST_X) {IdId1_pc, IdId1_pc4, IdId1_pr,

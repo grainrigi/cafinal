@@ -42,10 +42,10 @@ endmodule
 /********************************************************************************************/
 module m_memory_d (w_clk, w_raddr, w_waddr, w_we, w_din, r_dout);
    input  wire w_clk, w_we;
-   input  wire [ 8:0] w_raddr, w_waddr; // read address & write address
+   input  wire [`IADDR] w_raddr, w_waddr; // read address & write address
    input  wire [31:0] w_din;
    output reg  [31:0] r_dout;
-   reg [31:0] cm_ram [0:511]; // 512 word (512 x 32bit) memory
+   reg [31:0] cm_ram [0:(2**`IADDR_WIDTH)-1]; // 512 word (512 x 32bit) memory
    always @(posedge w_clk) if (w_we) cm_ram[w_waddr] <= w_din; // write port
    always @(posedge w_clk) r_dout <= cm_ram[w_raddr];                            // read  port
 endmodule
@@ -90,7 +90,8 @@ module main #(
    wire        clk_166_67_mhz; //
    wire        clk_200_mhz;    // 
    wire        locked;         // clk_wiz locked
-   wire [31:0] I_DATA, I_ADDR, D_IN, D_OUT, D_ADDR;
+   wire [31:0] I_DATA, D_IN, D_OUT, D_ADDR;
+   wire [`HADDR] I_ADDR;
    wire [3:0]  D_WE;
    wire        D_OE, D_STALL;
    assign uart_txd = 1;
@@ -115,7 +116,7 @@ module main #(
    always @(posedge clk) if(r_wcnt==512) initdone <= 1;
 
    wire [31:0] I_IN;
-   m_memory_d m_imem (clk, I_ADDR[10:2], r_wcnt, (!initdone & r_cnt==4), r_data, I_IN);
+   m_memory_d m_imem (clk, I_ADDR[`ISLICE], r_wcnt, (!initdone & r_cnt==4), r_data, I_IN);
    /****************************************************************************************/
    reg r_rstx = 0; // reset_x signal for processor core
    always @(posedge clk) r_rstx <= (!rst & initdone);
