@@ -222,7 +222,8 @@ module m_cached_memory #(
 
     assign dmem_jamming = dram_busy && (dmem_ren || dmem_wen);
     assign dmem_stall = (
-       current_task == TASK_READ_ISSUE
+       current_task == TASK_WAIT_CALIB
+    || current_task == TASK_READ_ISSUE
     || current_task == TASK_READ_ISSUE_STALL
     || current_task == TASK_READ_WAIT
     || current_task == TASK_WRITE_ISSUE_STALL
@@ -332,9 +333,6 @@ module m_cached_memory #(
           .o_data_valid(dram_dout_valid),
           .o_busy(dram_busy));
     
-
-    always @(posedge clk) prev_task <= current_task;
-
     always @(posedge clk) if (rst) begin
       prev_task <= TASK_WAIT_CALIB;
       dmem_wen_reg <= 0;
@@ -342,6 +340,7 @@ module m_cached_memory #(
       dmem_din_reg <= 0;
       dram_dout_reg <= 0;
     end else begin
+      prev_task <= current_task;
       if (current_task == TASK_CACHE_READ || current_task == TASK_WRITE_THROUGH) begin
          dmem_addr_reg <= dmem_addr;
          dmem_wen_reg <= dmem_wen;
