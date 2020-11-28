@@ -30,7 +30,7 @@ module m_cache
   output reg  [127:0] o_data,  // read data
   input  wire         i_bwe,   // write enable (cache install)
   input  wire [127:0] i_bdata, // write data (cache install)
-  output wire         o_hit,   // cache hit (read)
+  output reg          o_hit,   // cache hit (read)
   output wire [1:0]   o_bindex
 );
   localparam INDEX_WIDTH = 8;
@@ -39,24 +39,24 @@ module m_cache
   localparam EWIDTH = 1 + TAG_WIDTH + 128;
   reg  [TAG_WIDTH:0] meta_ram[0:NUM_ENTRIES-1]; // 256 entries
 
-  // read no delay (for metadata reading)
+  // read no delay (for hit judge)
   wire [TAG_WIDTH-1:0]   w_ritag   = i_raddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_rindex  = i_raddr[INDEX_WIDTH+3:4];                      // entry index
   wire [1:0]             w_rbindex = i_raddr[3:2];                                  // block index
+  wire [TAG_WIDTH:0]     w_wmeta   = meta_ram[w_rindex];
+  wire [TAG_WIDTH-1:0]   w_retag   = w_wmeta[TAG_WIDTH-1:0];
+  wire                   w_rvalid  = w_wmeta[TAG_WIDTH];
+
+  always @(posedge i_clk) o_hit <= w_rvalid && (w_retag == w_ritag);
 
   // write no delay (for cache install)
   wire [TAG_WIDTH-1:0]   w_witag   = i_waddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_windex  = i_waddr[INDEX_WIDTH+3:4];                      // entry index
 
-  // read delay (for hit judge)
+  // read delay (for simultaneous read and install)
   reg  [TAG_WIDTH:0]     r_rmeta;
-  reg  [`EADDR]           r_raddr;
-  wire [TAG_WIDTH-1:0]   w_dritag  = r_raddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];
-  wire [TAG_WIDTH-1:0]   w_dretag   = r_rmeta[TAG_WIDTH-1:0];
-  wire                   w_drhit    = r_rmeta[TAG_WIDTH] && (w_dretag == w_dritag);
-  wire [1:0]             w_drbindex = r_raddr[3:2];
-  assign o_hit = w_drhit;
-  assign o_bindex = w_drbindex;
+  reg  [1:0]             r_drbindex = 0;
+  assign o_bindex = r_drbindex;
 
   // write delay (for sw)
   reg  [`EADDR]           r_waddr;
@@ -79,7 +79,7 @@ module m_cache
   integer i;
   always @(*) begin
     for (i = 0; i < 4; i = i + 1) begin
-      o_data[i*32 +: 32] = (r_read_installing && w_drbindex == i) ? r_bdata[i*32 +: 32] : w_drdata[i*32 +: 32];
+      o_data[i*32 +: 32] = (r_read_installing && r_drbindex == i) ? r_bdata[i*32 +: 32] : w_drdata[i*32 +: 32];
     end
   end
 
@@ -104,12 +104,11 @@ module m_cache
   always @(posedge i_clk) if (i_bwe) meta_ram[w_windex] <= {1'b1, w_witag};
   always @(posedge i_clk) begin
      r_wmeta <= meta_ram[w_windex];
-     r_rmeta <= meta_ram[w_rindex];
-     r_raddr <= i_raddr;
      r_waddr <= i_waddr;
      r_wdata <= i_data;
      r_we <= i_we;
      r_read_installing <= w_read_installing;
+     r_drbindex <= w_rbindex;
      r_bdata <= i_bdata;
   end
   
