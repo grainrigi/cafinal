@@ -65,9 +65,13 @@ module m_mw_memory #(
     if (r_count != 0) begin
       r_count <= r_count - 1;
       r_valid <= 0;
+      r_rdata <= 128'h12345678ABCDEF0123456789ABCDEF01;
     end else begin
       if (r_reading) begin
         r_rdata <= cm_ram[r_raddr[APP_ADDR_WIDTH-2:3]];
+      end else begin
+        r_rdata <= 128'h12345678ABCDEF0123456789ABCDEF01;
+        r_valid <= 0;
       end
       if (w_fifo_available) begin
         r_raddr <= w_fifo_data;
