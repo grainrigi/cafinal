@@ -427,12 +427,12 @@ module GPR(CLK, REGNUM0, REGNUM1, REGNUM2, DIN0, WE0, DOUT0, DOUT1);
     input wire  [4:0] REGNUM0, REGNUM1, REGNUM2;
     input wire [31:0] DIN0;
     input wire        WE0;
-    output reg [31:0] DOUT0, DOUT1;
+    output wire [31:0] DOUT0, DOUT1;
 
     reg [31:0] r[0:31];
 
-    always @(negedge CLK) DOUT0 <= (REGNUM0==0) ? 0 : r[REGNUM0];
-    always @(negedge CLK) DOUT1 <= (REGNUM1==0) ? 0 : r[REGNUM1];
+    assign DOUT0 = (REGNUM0==0) ? 0 : r[REGNUM0];
+    assign DOUT1 = (REGNUM1==0) ? 0 : r[REGNUM1];
     always @(posedge CLK) if(WE0) r[REGNUM2] <= DIN0;
 endmodule
 
