@@ -148,6 +148,7 @@ module m_cached_memory #(
     localparam TASK_READ_ISSUE         = 4'b0111;
     localparam TASK_WRITE_ISSUE        = 4'b1000;
     localparam TASK_COMPLETE_READ      = 4'b1001;
+    localparam TASK_SAVE_DRAM_RESULT   = 4'b1010;
 
     wire                        clk;
     wire                        rst;
@@ -190,7 +191,6 @@ module m_cached_memory #(
     reg  [31:0]                 dmem_din_reg;
     reg                         dmem_use_dramout;
 
-    reg  [3:0]                  current_task = 0;
     reg  [3:0]                  prev_task = 0;
 
     integer i;
@@ -209,7 +209,8 @@ module m_cached_memory #(
     assign dmem_addr  = (i_dmem_init_done)? i_dmem_addr : i_dmem_init_addr;
     assign dmem_din   = (i_dmem_init_done)? i_dmem_data : i_dmem_init_data;
 
-    assign dmem_raw_data = (current_task == TASK_COMPLETE_READ) ? dram_dout : cache_dout;
+    assign dmem_raw_data = C_TASK_COMPLETE_READ ? dram_dout_reg : cache_dout;
+    assign dmem_bindex   = C_TASK_COMPLETE_READ ? dram_addr_column_offset[2:1] : cache_bindex;
 
     always @(*) begin
         dmem_dout = 0;
@@ -222,19 +223,18 @@ module m_cached_memory #(
 
     assign dmem_jamming = dram_busy && (dmem_ren || dmem_wen);
     assign dmem_stall = (
-       current_task == TASK_WAIT_CALIB
-    || current_task == TASK_READ_ISSUE
-    || current_task == TASK_READ_ISSUE_STALL
-    || current_task == TASK_READ_WAIT
-    || current_task == TASK_WRITE_ISSUE_STALL
+       C_TASK_WAIT_CALIB
+    || C_TASK_READ_ISSUE
+    || C_TASK_READ_ISSUE_STALL
+    || C_TASK_READ_WAIT
+    || C_TASK_SAVE_DRAM_RESULT
+    || C_TASK_WRITE_ISSUE_STALL
     );
 
-    assign dram_ren = current_task == TASK_READ_ISSUE;
-    assign dram_wen = current_task == TASK_WRITE_ISSUE;
+    assign dram_ren = C_TASK_READ_ISSUE;
+    assign dram_wen = C_TASK_WRITE_ISSUE;
     assign dram_addr = {dmem_addr_reg[APP_ADDR_WIDTH-1 : 4], 3'b000};
     assign dram_addr_column_offset = dmem_addr_reg[3:1];
-
-    assign dmem_bindex = (current_task == TASK_COMPLETE_READ) ? dram_addr_column_offset[2:1] : cache_bindex;
 
     always @(*) begin
         dram_din = 0;
@@ -255,13 +255,13 @@ module m_cached_memory #(
     end
 
     // cache
-    assign cache_install = (current_task == TASK_COMPLETE_READ);
-    assign cache_install_data = dram_dout;
+    assign cache_install = C_TASK_COMPLETE_READ;
+    assign cache_install_data = dram_dout_reg;
 
     m_cache cache (
       .i_clk(clk),
       .i_raddr(dmem_addr),
-      .i_waddr((current_task == TASK_COMPLETE_READ) ? dmem_addr_reg : dmem_addr),
+      .i_waddr(cache_install ? dmem_addr_reg : dmem_addr),
       .i_we(dmem_wen != 0),
       .i_data(dmem_din),
       .o_data(cache_dout),
@@ -333,6 +333,30 @@ module m_cached_memory #(
           .o_data_valid(dram_dout_valid),
           .o_busy(dram_busy));
     
+    wire C_TASK_WAIT_CALIB         = prev_task == TASK_WAIT_CALIB && !dram_init_calib_complete;
+    wire w_write_issue_next        = prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL;
+    wire C_TASK_WRITE_ISSUE_STALL  = dram_busy && w_write_issue_next;
+    wire w_read_miss               = (prev_task == TASK_CACHE_READ) && !cache_hit;
+    wire w_read_issue_next         = w_read_miss || prev_task == TASK_READ_ISSUE_STALL;
+    wire C_TASK_READ_ISSUE_STALL   = dram_busy && w_read_issue_next;
+    wire C_TASK_READ_WAIT          = prev_task == TASK_READ_ISSUE || (!dram_dout_valid && prev_task == TASK_READ_WAIT);
+    wire C_TASK_READ_ISSUE         = !dram_busy && w_read_issue_next;
+    wire C_TASK_WRITE_ISSUE        = !dram_busy && w_write_issue_next;
+    wire C_TASK_COMPLETE_READ      = prev_task == TASK_SAVE_DRAM_RESULT;
+    wire C_TASK_SAVE_DRAM_RESULT   = dram_dout_valid && prev_task == TASK_READ_WAIT;
+    wire w_other                   = !(
+         C_TASK_WAIT_CALIB
+      || C_TASK_WRITE_ISSUE_STALL
+      || C_TASK_READ_ISSUE_STALL
+      || C_TASK_READ_WAIT
+      || C_TASK_READ_ISSUE
+      || C_TASK_WRITE_ISSUE
+      || C_TASK_COMPLETE_READ
+      || C_TASK_SAVE_DRAM_RESULT
+    );
+    wire C_TASK_CACHE_READ         = w_other && dmem_ren;
+    wire C_TASK_WRITE_THROUGH      = w_other && dmem_wen;
+
     always @(posedge clk) if (rst) begin
       prev_task <= TASK_WAIT_CALIB;
       dmem_wen_reg <= 0;
@@ -340,46 +364,25 @@ module m_cached_memory #(
       dmem_din_reg <= 0;
       dram_dout_reg <= 0;
     end else begin
-      prev_task <= current_task;
-      if (current_task == TASK_CACHE_READ || current_task == TASK_WRITE_THROUGH) begin
+      // task update
+           if (C_TASK_WAIT_CALIB         ) prev_task <= TASK_WAIT_CALIB;
+      else if (C_TASK_CACHE_READ         ) prev_task <= TASK_CACHE_READ;
+      else if (C_TASK_WRITE_THROUGH      ) prev_task <= TASK_WRITE_THROUGH;
+      else if (C_TASK_WRITE_ISSUE_STALL  ) prev_task <= TASK_WRITE_ISSUE_STALL;
+      else if (C_TASK_READ_ISSUE_STALL   ) prev_task <= TASK_READ_ISSUE_STALL;
+      else if (C_TASK_READ_WAIT          ) prev_task <= TASK_READ_WAIT;
+      else if (C_TASK_READ_ISSUE         ) prev_task <= TASK_READ_ISSUE;
+      else if (C_TASK_WRITE_ISSUE        ) prev_task <= TASK_WRITE_ISSUE;
+      else if (C_TASK_COMPLETE_READ      ) prev_task <= TASK_COMPLETE_READ;
+      else if (C_TASK_SAVE_DRAM_RESULT   ) prev_task <= TASK_SAVE_DRAM_RESULT;
+      else                                 prev_task <= TASK_IDLE;
+      if (C_TASK_CACHE_READ || C_TASK_WRITE_THROUGH) begin
          dmem_addr_reg <= dmem_addr;
          dmem_wen_reg <= dmem_wen;
          dmem_din_reg <= dmem_din;
       end
-    end
-
-    always @(*) begin
-      if (prev_task == TASK_WAIT_CALIB && !dram_init_calib_complete) begin
-        current_task = TASK_WAIT_CALIB;
-      end else if (prev_task == TASK_CACHE_READ && !cache_hit) begin
-        if (dram_busy)
-          current_task = TASK_READ_ISSUE_STALL;
-        else
-          current_task = TASK_READ_ISSUE;
-      end else if (prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL) begin
-        if (dram_busy)
-          current_task = TASK_WRITE_ISSUE_STALL;
-        else
-          current_task = TASK_WRITE_ISSUE;
-      end else if (prev_task == TASK_READ_ISSUE_STALL) begin
-        if (dram_busy)
-          current_task = TASK_READ_ISSUE_STALL;
-        else
-          current_task = TASK_READ_ISSUE;
-      end else if (prev_task == TASK_READ_ISSUE) begin
-        current_task = TASK_READ_WAIT;
-      end else if (prev_task == TASK_READ_WAIT) begin
-        if (dram_dout_valid)
-          current_task = TASK_COMPLETE_READ;
-        else
-          current_task = TASK_READ_WAIT;
-      end else begin
-        if (dmem_ren)
-          current_task = TASK_CACHE_READ;
-        else if (dmem_wen)
-          current_task = TASK_WRITE_THROUGH;
-        else
-          current_task = TASK_IDLE;
+      if (C_TASK_SAVE_DRAM_RESULT) begin
+        dram_dout_reg <= dram_dout;
       end
     end
 endmodule
