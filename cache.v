@@ -97,7 +97,7 @@ module m_cache #(
 
   always @(posedge i_clk) if (i_ie) meta_ram[w_iindex] <= {1'b1, w_iitag};
   always @(posedge i_clk) begin
-     if (i_we && i_ie) begin
+     if (r_we && i_ie) begin
        $write("simultaneous write and install is not permitted.\n");
        #1000 $finish();
      end
