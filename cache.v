@@ -24,25 +24,25 @@ module m_cache #(
   parameter INDEX_WIDTH = 8
 )(
   input  wire          i_clk,   // clock
-  input  wire [`EADDR] i_addr,  // 32bit-data operation address (read/write)
+  input  wire [`DADDR] i_addr,  // 32bit-data operation address (read/write)
   output wire          o_hit,   // 
   input  wire          i_we,    // write enable
-  input  wire          o_we,    // write enable
+  output wire          o_we,    // write enable
   input  wire [31:0]   i_data,  // write data
   output reg  [127:0]  o_data,  // read data
   output reg           o_rhit,  // read cache hit (o_data is valid or not)
   output wire [1:0]    o_bindex,// read data block index
   input  wire          i_ie,    // install enable
-  input  wire [`EADDR] i_iaddr, // install address (4 lsb is ignored)
+  input  wire [`DADDR] i_iaddr, // install address (4 lsb is ignored)
   input  wire [127:0]  i_idata  // write data (cache install)
 );
   localparam NUM_ENTRIES = 2 ** INDEX_WIDTH;
-  localparam TAG_WIDTH   = `EADDR_WIDTH - INDEX_WIDTH - 4;
+  localparam TAG_WIDTH   = `DADDR_WIDTH - INDEX_WIDTH - 4;
   localparam EWIDTH = 1 + TAG_WIDTH + 128;
   reg  [TAG_WIDTH:0] meta_ram[0:NUM_ENTRIES-1]; // 256 entries
 
   // 32bit-data operation data
-  wire [TAG_WIDTH-1:0]   w_itag   = i_addr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [TAG_WIDTH-1:0]   w_itag   = i_addr[`DADDR_WIDTH-1:`DADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_index  = i_addr[INDEX_WIDTH+3:4];                      // entry index
   wire [1:0]             w_bindex = i_addr[3:2];                                  // block index
   wire [TAG_WIDTH:0]     w_meta   = meta_ram[w_index];
@@ -55,14 +55,14 @@ module m_cache #(
 
   // delay write
   reg                    r_we;
-  reg  [`EADDR]          r_daddr;
-  reg  [`EADDR]          r_ddata;
+  reg  [`DADDR]          r_daddr;
+  reg  [`DADDR]          r_ddata;
   wire [INDEX_WIDTH-1:0] w_dindex  = r_daddr[INDEX_WIDTH+3:4];
   wire [1:0]             w_dbindex = r_daddr[3:2];
   assign o_we = r_we;
 
   // cache install
-  wire [TAG_WIDTH-1:0]   w_iitag   = i_iaddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [TAG_WIDTH-1:0]   w_iitag   = i_iaddr[`DADDR_WIDTH-1:`DADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_iindex  = i_iaddr[INDEX_WIDTH+3:4];                      // entry index
 
   // simultaneous read and install handling
