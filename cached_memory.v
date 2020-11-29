@@ -157,6 +157,7 @@ module m_cached_memory #(
     localparam TASK_WRITE_ISSUE        = 4'b1000;
     localparam TASK_COMPLETE_READ      = 4'b1001;
     localparam TASK_SAVE_DRAM_RESULT   = 4'b1010;
+    localparam TASK_CACHE_READ_STALL   = 4'b1011;
 
     localparam READ_NONE               = 3'b000;
     localparam READ_GET                = 3'b010;
@@ -256,6 +257,7 @@ module m_cached_memory #(
     || C_TASK_READ_ISSUE_STALL
     || C_TASK_READ_WAIT
     || C_TASK_SAVE_DRAM_RESULT
+    || C_TASK_WRITE_ISSUE && (dmem_ren || dmem_wen)
     || C_TASK_WRITE_ISSUE_STALL
     );
 

@@ -52,13 +52,19 @@ module m_cache #(
   always @(posedge i_clk) o_rhit <= w_hit;
   assign o_hit = w_hit;
 
+  // delay write
+  reg                    r_we;
+  reg  [`EADDR]          r_daddr;
+  reg  [`EADDR]          r_ddata;
+  wire [INDEX_WIDTH-1:0] w_dindex  = r_daddr[INDEX_WIDTH+3:4];
+  wire [1:0]             w_dbindex = r_daddr[3:2];
+
   // cache install
   wire [TAG_WIDTH-1:0]   w_iitag   = i_iaddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
   wire [INDEX_WIDTH-1:0] w_iindex  = i_iaddr[INDEX_WIDTH+3:4];                      // entry index
 
   // simultaneous read and install handling
-  reg  [1:0]             r_dbindex = 0;
-  assign o_bindex = r_dbindex;
+  assign o_bindex = w_dbindex;
   wire w_read_installing = (i_ie) && (w_iitag == w_itag) && (w_iindex == w_index);
   reg  r_read_installing;
   reg [31:0] r_installed_data;
@@ -66,7 +72,7 @@ module m_cache #(
   integer i;
   always @(*) begin
     for (i = 0; i < 4; i = i + 1) begin
-      o_data[i*32 +: 32] = (r_read_installing && r_dbindex == i) ? r_installed_data : w_drdata[i*32 +: 32];
+      o_data[i*32 +: 32] = (r_read_installing && w_dbindex == i) ? r_installed_data : w_drdata[i*32 +: 32];
     end
   end
 
@@ -75,15 +81,15 @@ module m_cache #(
   genvar g;
   generate
   for (g = 0; g < 4; g = g + 1) begin: data_ram
-    wire this_we = (w_bindex == g) && i_we && w_hit;
+    wire this_we = (w_dbindex == g) && r_we && o_rhit;
     m_cache_store #(
       .INDEX_WIDTH(INDEX_WIDTH)
     ) store (
       .i_clk(i_clk),
       .i_rindex(w_index),
-      .i_windex((i_ie) ? w_iindex : w_index),
+      .i_windex((i_ie) ? w_iindex : w_dindex),
       .i_we(this_we || i_ie),
-      .i_data((i_ie) ? i_idata[g*32 +: 32] : i_data),
+      .i_data((i_ie) ? i_idata[g*32 +: 32] : r_ddata),
       .o_data(w_drdata[g*32 +: 32])
     );
   end
@@ -96,7 +102,9 @@ module m_cache #(
        #1000 $finish();
      end
      r_read_installing <= w_read_installing;
-     r_dbindex <= w_bindex;
+     r_we    <= i_we;
+     r_daddr <= i_addr;
+     r_ddata <= i_data;
      r_installed_data <= i_idata[w_bindex*32 +: 32];
   end
   
