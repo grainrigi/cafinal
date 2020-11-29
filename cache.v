@@ -27,6 +27,7 @@ module m_cache #(
   input  wire [`DADDR] i_addr,  // 32bit-data operation address (read/write)
   input  wire          i_we,    // write enable
   output wire          o_we,    // write enable
+  output wire          o_read_stall,
   input  wire [31:0]   i_data,  // write data
   output reg  [127:0]  o_data,  // read data
   output reg           o_rhit,  // read cache hit (o_data is valid or not)
@@ -68,11 +69,12 @@ module m_cache #(
   wire w_read_installing = (i_ie) && (w_iitag == w_itag) && (w_iindex == w_index);
   reg  r_read_installing;
   reg [31:0] r_installed_data;
+  assign o_read_stall = r_read_installing;
 
   integer i;
   always @(*) begin
     for (i = 0; i < 4; i = i + 1) begin
-      o_data[i*32 +: 32] = (r_read_installing && w_dbindex == i) ? r_installed_data : w_drdata[i*32 +: 32];
+      o_data[i*32 +: 32] = w_drdata[i*32 +: 32];
     end
   end
 

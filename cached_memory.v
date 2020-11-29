@@ -204,6 +204,7 @@ module m_cached_memory #(
     wire [`DADDR]               cache_install_addr;
     wire [APP_DATA_WIDTH-1:0]   cache_install_data;
     wire                        cache_write_now;
+    wire                        cache_read_stall;
 
     wire [APP_DATA_WIDTH-1:0]   dmem_raw_data;
 
@@ -257,6 +258,7 @@ module m_cached_memory #(
     || (prev_task == TASK_READ_ISSUE)
     || (prev_task == TASK_READ_ISSUE_STALL)
     || (prev_task == TASK_READ_WAIT)
+    || cache_read_stall
     || (!dram_busy && (prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL) && (dmem_ren || dmem_wen))
     || (dram_busy && (prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL))
     );
@@ -328,6 +330,7 @@ module m_cached_memory #(
       .i_addr(dmem_addr),
       .i_we(dmem_wen != 0),
       .o_we(cache_write_now),
+      .o_read_stall(cache_read_stall),
       .i_data(dmem_din),
       .o_data(cache_dout),
       .o_rhit(cache_read_hit),
