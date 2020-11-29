@@ -105,6 +105,8 @@ module MIPSCORE (
   reg          Id2Ex_rsfwwb;    // ID2-EX pipeline reg: forwarding necessity of RS (EX -> WB)
   reg          Id2Ex_rtfwme;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> ME)
   reg          Id2Ex_rtfwwb;    // ID2-EX pipeline reg: forwarding necessity of RT (EX -> WB)
+  reg          Id2Ex_rt2fwme;   // ID2-EX pipeline reg: forwarding necessity of RT2 (EX -> ME)
+  reg          Id2Ex_rt2fwwb;   // ID2-EX pipeline reg: forwarding necessity of RT2 (EX -> WB)
 
   reg [`HADDR] ExMe_pc;         // EX-ME pipeline reg: program counter (just for debugging)
   reg          ExMe_sw;         // EX-ME pipeline reg: sw
@@ -273,8 +275,6 @@ module MIPSCORE (
   /**************************** ID2 stage (Data Fowarding) ***********************************/
   wire [31:0] Id2RRS_FW;             // forwarded RS
   wire [31:0] Id2RRT_FW;             // forwarded RT
-  wire [31:0] Id2RRS_INTERLOCK_FW;   // forwarded RS (retry)
-  wire [31:0] Id2RRT_INTERLOCK_FW;   // forwarded RT (retry)
 
   wire Id2RRT2_IS_IMM = Id1Id2_addi || Id1Id2_sw || Id1Id2_lw;
   wire ExRRT2_IS_IMM = Id2Ex_addi || Id2Ex_sw || Id2Ex_lw;
@@ -283,10 +283,6 @@ module MIPSCORE (
                       .DST1(ExMe_rd2), .DIN1(ExMe_rslt), .DST2(MeWb_rd2), .DIN2(WbRSLT));
   FORWARDING id2fwrt (.SRC(Id1Id2_rt), .DIN0(Id1Id2_rrt), .DOUT(Id2RRT_FW),
                       .DST1(ExMe_rd2), .DIN1(ExMe_rslt), .DST2(MeWb_rd2), .DIN2(WbRSLT));
-  FORWARDING id2fwrs_interlock (.SRC(Id2Ex_rs), .DIN0(Id2Ex_rrs), .DOUT(Id2RRS_INTERLOCK_FW),
-                                .DST1(ExMe_rd2), .DIN1(ExMe_rslt), .DST2(MeWb_rd2), .DIN2(WbRSLT));
-  FORWARDING id2fwrt_interlock (.SRC(Id2Ex_rt), .DIN0(Id2Ex_rrt), .DOUT(Id2RRT_INTERLOCK_FW),
-                                .DST1(ExMe_rd2), .DIN1(ExMe_rslt), .DST2(MeWb_rd2), .DIN2(WbRSLT));
 
   always @(posedge CLK) begin
     if (!RST_X) {Id2Ex_pc, Id2Ex_pc4, Id2Ex_pr,
@@ -297,7 +293,7 @@ module MIPSCORE (
       Id2Ex_rs, Id2Ex_rt, Id2Ex_rd2,
       Id2Ex_tpc,
       Id2Ex_rrs, Id2Ex_rrt, Id2Ex_rrt2,
-      Id2Ex_rsfwme, Id2Ex_rsfwwb, Id2Ex_rtfwme, Id2Ex_rtfwwb} <= #3 0;
+      Id2Ex_rsfwme, Id2Ex_rsfwwb, Id2Ex_rt2fwme, Id2Ex_rt2fwwb} <= #3 0;
     else if (!Id2_STALL) begin
       Id2Ex_pc     <= #3 Id1Id2_pc;
       Id2Ex_pc4    <= #3 Id1Id2_pc4;
@@ -326,13 +322,15 @@ module MIPSCORE (
       // MEM, WBからのフォワーディングの必要性を判定
       Id2Ex_rsfwme <= #3 Id2Ex_rd2 && Id2Ex_rd2 == Id1Id2_rs;
       Id2Ex_rsfwwb <= #3 ExMe_rd2 && ExMe_rd2 == Id1Id2_rs;
-      // rtはRフォーマット(IdOP > 5)の場合のみ必要
-      Id2Ex_rtfwme <= #3 !Id2RRT2_IS_IMM && Id2Ex_rd2 && Id2Ex_rd2 == Id1Id2_rt;
-      Id2Ex_rtfwwb <= #3 !Id2RRT2_IS_IMM && ExMe_rd2 && ExMe_rd2 == Id1Id2_rt; 
+      Id2Ex_rtfwme <= #3 Id2Ex_rd2 && Id2Ex_rd2 == Id1Id2_rt;
+      Id2Ex_rtfwwb <= #3 ExMe_rd2 && ExMe_rd2 == Id1Id2_rt;
+      // rt2はRフォーマット(IdOP > 5)の場合のみ必要
+      Id2Ex_rt2fwme <= #3 !Id2RRT2_IS_IMM && Id2Ex_rd2 && Id2Ex_rd2 == Id1Id2_rt;
+      Id2Ex_rt2fwwb <= #3 !Id2RRT2_IS_IMM && ExMe_rd2 && ExMe_rd2 == Id1Id2_rt; 
     end else if (WBEXFW_INTERLOCK) begin
-      Id2Ex_rrs    <= #3 Id2RRS_INTERLOCK_FW;
-      Id2Ex_rrt    <= #3 Id2RRT_INTERLOCK_FW;
-      Id2Ex_rrt2   <= #3 ExRRT2_IS_IMM ? Id2Ex_rrt2 : Id2RRT_INTERLOCK_FW;
+      if (Id2Ex_rsfwwb)  Id2Ex_rrs  <= #3 WbRSLT;
+      if (Id2Ex_rtfwwb)  Id2Ex_rrt  <= #3 WbRSLT;
+      if (Id2Ex_rt2fwwb) Id2Ex_rrt2 <= #3 WbRSLT;
     end
   end
 
@@ -340,8 +338,8 @@ module MIPSCORE (
   // 必要に応じてフォワーディングする(WBからはWbRSLTでなくMeWb_rsltをフォワード(lwの結果はフォワードしない))
   wire [31:0] ExOP1 = (Id2Ex_rsfwme) ? ExMe_rslt : 
                       /*(Id2Ex_rsfwwb) ? MeWb_rslt :*/ Id2Ex_rrs;
-  wire [31:0] ExOP2 = (Id2Ex_rtfwme) ? ExMe_rslt :
-                      /*(Id2Ex_rtfwwb) ? MeWb_rslt :*/ Id2Ex_rrt2;
+  wire [31:0] ExOP2 = (Id2Ex_rt2fwme) ? ExMe_rslt :
+                      /*(Id2Ex_rt2fwwb) ? MeWb_rslt :*/ Id2Ex_rrt2;
 
   // ALU
 `ifdef ENABLE_SHIFT
@@ -353,7 +351,7 @@ module MIPSCORE (
 `endif
   
   // WBからメモリの読み出し結果をフォワードしなければならない場合、インターロック
-  assign WBEXFW_INTERLOCK = MeWb_lw && (Id2Ex_rsfwwb || Id2Ex_rtfwwb);
+  assign WBEXFW_INTERLOCK = MeWb_lw && (Id2Ex_rsfwwb || Id2Ex_rtfwwb || Id2Ex_rt2fwwb);
   
   // 分岐判定
   wire ExBE = !r_pr_fail && (Id2Ex_beq || Id2Ex_bne);
