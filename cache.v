@@ -27,6 +27,7 @@ module m_cache #(
   input  wire [`EADDR] i_addr,  // 32bit-data operation address (read/write)
   output wire          o_hit,   // 
   input  wire          i_we,    // write enable
+  input  wire          o_we,    // write enable
   input  wire [31:0]   i_data,  // write data
   output reg  [127:0]  o_data,  // read data
   output reg           o_rhit,  // read cache hit (o_data is valid or not)
@@ -58,6 +59,7 @@ module m_cache #(
   reg  [`EADDR]          r_ddata;
   wire [INDEX_WIDTH-1:0] w_dindex  = r_daddr[INDEX_WIDTH+3:4];
   wire [1:0]             w_dbindex = r_daddr[3:2];
+  assign o_we = r_we;
 
   // cache install
   wire [TAG_WIDTH-1:0]   w_iitag   = i_iaddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag

@@ -204,6 +204,7 @@ module m_cached_memory #(
     wire                        cache_install;
     wire [31:0]                 cache_install_addr;
     wire [APP_DATA_WIDTH-1:0]   cache_install_data;
+    wire                        cache_write_now;
 
     wire [APP_DATA_WIDTH-1:0]   dmem_raw_data;
 
@@ -314,7 +315,7 @@ module m_cached_memory #(
     assign read_prefetch_valid        = dram_dout_valid && (read_state == READ_PREFETCH || read_state == READ_PREFETCH_THEN_GET);
 
     assign prefetch_issuable    = !dram_busy && !((prev_task == C_TASK_WAIT_CALIB) || C_TASK_READ_ISSUE || C_TASK_WRITE_ISSUE);
-    assign prefetch_installable = !(C_TASK_COMPLETE_READ || C_TASK_WRITE_THROUGH || C_TASK_WRITE_ISSUE);
+    assign prefetch_installable = !(C_TASK_COMPLETE_READ || cache_write_now || C_TASK_WRITE_ISSUE);
 
     // cache
     assign cache_install = C_TASK_COMPLETE_READ || prefetch_installing;
@@ -328,6 +329,7 @@ module m_cached_memory #(
       .i_addr(dmem_addr),
       .o_hit(cache_hit),
       .i_we(dmem_wen != 0),
+      .o_we(cache_write_now),
       .i_data(dmem_din),
       .o_data(cache_dout),
       .o_rhit(cache_read_hit),
