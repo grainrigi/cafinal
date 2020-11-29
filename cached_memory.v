@@ -144,7 +144,7 @@ module m_cached_memory #(
      output wire [31:0]                  o_dmem_data,
      output wire                         o_dmem_stall);
 
-    localparam INDEX_WIDTH             = 8;
+    localparam INDEX_WIDTH             = 9;
 
     localparam TASK_WAIT_CALIB         = 4'b0000;
     localparam TASK_IDLE               = 4'b0001;
@@ -296,8 +296,7 @@ module m_cached_memory #(
       .o_issue_addr(prefetch_addr),
       .i_notify_read(prev_task == TASK_CACHE_READ),
       .i_notify_write(C_TASK_WRITE_ISSUE),
-      .i_notify_waddr(dmem_addr_reg),
-      .i_notify_raddr(dmem_addr_reg),
+      .i_notify_addr(dmem_addr_reg),
       .i_notify_data(dmem_din_reg),
       .i_notify_hit(cache_read_hit),
       .o_yield_read(read_get_prefetch_coalesce),
@@ -492,9 +491,8 @@ module m_prefetcher #(
   output wire [31:0]               o_issue_addr,   // issue address (held until the prefething of the address completes)
 
   input  wire                      i_notify_read,  // read was issued to cache in the previous posedge
-  input  wire [31:0]               i_notify_raddr, // notify address
   input  wire                      i_notify_write, // write is being issued from processor
-  input  wire [31:0]               i_notify_waddr, // notify address
+  input  wire [31:0]               i_notify_addr, // notify address
   input  wire [31:0]               i_notify_data,  // notify data (write)
   input  wire                      i_notify_hit,   // the block of i_notify_raddr exists in cache or not
   output wire                      o_yield_read,   // 
@@ -515,37 +513,37 @@ module m_prefetcher #(
   localparam TASK_SAVE_RESULT     = 3'b111;
   localparam TASK_INSTALL         = 3'b100;
   localparam TASK_INSTALL_WAIT    = 3'b101;
+  localparam TASK_WAIT_TAG_CHANGE = 3'b110;
 
   reg [3:0]                prev_task = 0;
   reg                      r_disable_current = 0;
   reg [APP_DATA_WIDTH-1:0] r_data;
   reg [31:0]               r_addr = 0;
   reg [31:0]               r_addr_next = 0;
+  reg [TAG_WIDTH-1:0]      r_current_tag = 0;
+  reg                      r_tag_changed = 0;
   reg [3:0]                r_mask = 0;
-  wire [27:0]              w_notify_raddr_norm;
-  wire [TAG_WIDTH-1:0]     w_notify_raddr_tag;
-  wire [27:0]              w_notify_waddr_norm;
-  wire [1:0]               w_notify_waddr_bindex;
+  wire [27:0]              w_notify_addr_norm;
+  wire [TAG_WIDTH-1:0]     w_notify_addr_tag;
+  wire [1:0]               w_notify_addr_bindex;
   wire [27:0]              w_addr_norm;
   wire [TAG_WIDTH-1:0]     w_addr_tag;
-  wire                     w_raccessing_prefetchee;
-  wire                     w_rtag_mismatch;
-  wire                     w_waccessing_prefetchee;
+  wire                     w_accessing_prefetchee;
+  wire                     w_tag_mismatch;
 
-  assign w_notify_raddr_norm   = i_notify_raddr[31:4];
-  assign w_notify_raddr_tag    = i_notify_raddr[`EADDR_WIDTH-1 -: TAG_WIDTH];
-  assign w_notify_waddr_norm   = i_notify_waddr[31:4];
-  assign w_notify_waddr_bindex = i_notify_waddr[3:2];
+  assign w_notify_addr_norm   = i_notify_addr[31:4];
+  assign w_notify_addr_tag    = i_notify_addr[`EADDR_WIDTH-1 -: TAG_WIDTH];
+  assign w_notify_addr_bindex = i_notify_addr[3:2];
   
   assign w_addr_norm = r_addr[31:4];
   assign w_addr_tag  = r_addr[`EADDR_WIDTH-1 -: TAG_WIDTH];
-  assign w_raccessing_prefetchee = w_notify_raddr_norm == w_addr_norm;
-  assign w_rtag_mismatch         = w_notify_raddr_tag != w_addr_tag;
-  assign w_waccessing_prefetchee = w_notify_waddr_norm == w_addr_norm;
-  assign o_yield_read   = i_notify_read && !i_notify_hit && w_raccessing_prefetchee && C_TASK_READ_WAIT;
+  assign w_accessing_prefetchee = w_notify_addr_norm == w_addr_norm;
+  assign w_tag_mismatch         = w_notify_addr_tag != w_addr_tag;
+  assign o_yield_read   = i_notify_read && !i_notify_hit && w_accessing_prefetchee && C_TASK_READ_WAIT;
 
-  wire C_TASK_WAIT_NEXT_ISSUE = (prev_task == TASK_WAIT_NEXT_ISSUE || prev_task == TASK_INSTALL) && !i_issuable;
-  wire C_TASK_ISSUE           = (prev_task == TASK_WAIT_NEXT_ISSUE || prev_task == TASK_INSTALL) && i_issuable;
+  wire C_TASK_WAIT_TAG_CHANGE = (prev_task == TASK_WAIT_TAG_CHANGE || prev_task == TASK_INSTALL) && (!r_tag_changed && r_current_tag != w_addr_tag);
+  wire C_TASK_WAIT_NEXT_ISSUE = !C_TASK_WAIT_TAG_CHANGE && (prev_task == TASK_WAIT_TAG_CHANGE || prev_task == TASK_WAIT_NEXT_ISSUE || prev_task == TASK_INSTALL) && !i_issuable;
+  wire C_TASK_ISSUE           = !C_TASK_WAIT_TAG_CHANGE && (prev_task == TASK_WAIT_TAG_CHANGE || prev_task == TASK_WAIT_NEXT_ISSUE || prev_task == TASK_INSTALL) && i_issuable;
   wire C_TASK_READ_WAIT       = (prev_task == TASK_ISSUE || prev_task == TASK_READ_WAIT) && !i_data_valid;
   wire C_TASK_SAVE_RESULT     = (prev_task == TASK_READ_WAIT) && i_data_valid;
   wire C_TASK_INSTALL         = (prev_task == TASK_SAVE_RESULT || prev_task == TASK_INSTALL_WAIT) && i_installable;
@@ -566,6 +564,8 @@ module m_prefetcher #(
     r_data <= 0;
     r_addr <= 0;
     r_addr_next <= 32'b10000;
+    r_current_tag <= 0;
+    r_tag_changed = 0;
     r_mask <= 0;
   end else begin
          if (o_yield_read)           prev_task <= TASK_INSTALL;
@@ -575,22 +575,30 @@ module m_prefetcher #(
     else if (C_TASK_SAVE_RESULT    ) prev_task <= TASK_SAVE_RESULT;
     else if (C_TASK_INSTALL        ) prev_task <= TASK_INSTALL;
     else if (C_TASK_INSTALL_WAIT   ) prev_task <= TASK_INSTALL_WAIT;
+    else if (C_TASK_WAIT_TAG_CHANGE) prev_task <= TASK_WAIT_TAG_CHANGE;
 
     if (C_TASK_SAVE_RESULT) begin
-      r_data <= i_data;
+      for (i = 0; i < 4; i = i + 1) begin
+        if (!r_mask[i]) r_data[i*32 +: 32] <= i_data[i*32 +: 32];
+      end
     end
 
-    if (i_notify_write && w_waccessing_prefetchee) begin
-      r_data[w_notify_waddr_bindex*32 +: 32] <= i_notify_data;
-      r_mask[w_notify_waddr_bindex]          <= 1;
+    if (i_notify_write && w_accessing_prefetchee) begin
+      r_data[w_notify_addr_bindex*32 +: 32] <= i_notify_data;
+      r_mask[w_notify_addr_bindex]          <= 1;
     end else if (w_end_of_fetch) begin
       r_addr      <= r_addr_next;
       r_addr_next <= r_addr_next + 5'b10000;
       r_mask      <= 0;
       r_disable_current <= 0;
-    end else if (i_notify_read && w_rtag_mismatch) begin
+    end else if (i_notify_read && w_tag_mismatch) begin
       r_disable_current <= 1;
-      r_addr_next <= i_notify_raddr + 5'b10000;
+      r_addr_next <= i_notify_addr + 5'b10000;
+    end
+
+    if (i_notify_read || i_notify_write) begin
+      r_current_tag <= w_notify_addr_tag;
+      r_tag_changed <= w_notify_addr_tag != r_current_tag;
     end
 
   end
