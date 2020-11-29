@@ -266,7 +266,7 @@ module m_cached_memory #(
     assign dram_ren = C_TASK_READ_ISSUE || prefetch_issuing;
     assign dram_wen = C_TASK_WRITE_ISSUE;
     assign dram_addr_org = (C_TASK_READ_ISSUE || C_TASK_WRITE_ISSUE) ? dmem_addr_reg : prefetch_addr;
-    assign dram_addr = {4'd0, dram_addr_org[APP_ADDR_WIDTH-1 : 4], 3'b000};
+    assign dram_addr = {4'd0, dram_addr_org[`DADDR_WIDTH-1 : 4], 3'b000};
     assign dram_addr_column_offset = dram_addr_org[3:1];
 
     always @(*) begin
@@ -583,17 +583,27 @@ module m_prefetcher #(
     else if (C_TASK_WAIT_TAG_CHANGE) prev_task <= TASK_WAIT_TAG_CHANGE;
 
     if (C_TASK_SAVE_RESULT) begin
+`ifdef SAVE_SW_MISS
       for (i = 0; i < 4; i = i + 1) begin
         if (!r_mask[i]) r_data[i*32 +: 32] <= i_data[i*32 +: 32];
       end
+`else
+      r_data <= i_data;
+`endif
     end
 
+`ifdef SAVE_SW_MISS
     if (i_notify_write && w_accessing_prefetchee) begin
       r_data[w_notify_addr_bindex*32 +: 32] <= i_notify_data;
       r_mask[w_notify_addr_bindex]          <= 1;
     end else if (w_end_of_fetch) begin
       r_mask      <= 0;
     end
+`else
+    if (i_notify_write && w_accessing_prefetchee) begin
+      r_disable_current <= 1;
+    end
+`endif
 
     if (w_end_of_fetch) begin
       r_addr      <= r_addr_next;
