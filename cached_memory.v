@@ -255,8 +255,9 @@ module m_cached_memory #(
     assign dmem_stall = (
        C_TASK_WAIT_CALIB
     || w_read_miss
-    || C_TASK_READ_ISSUE_STALL
-    || C_TASK_READ_WAIT
+    || prev_task == TASK_READ_ISSUE
+    || prev_task == TASK_READ_ISSUE_STALL
+    || prev_task == TASK_READ_WAIT
     || C_TASK_SAVE_DRAM_RESULT
     || C_TASK_WRITE_ISSUE && (dmem_ren || dmem_wen)
     || C_TASK_WRITE_ISSUE_STALL
