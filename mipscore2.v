@@ -329,7 +329,7 @@ module MIPSCORE (
       // rtはRフォーマット(IdOP > 5)の場合のみ必要
       Id2Ex_rtfwme <= #3 !Id2RRT2_IS_IMM && Id2Ex_rd2 && Id2Ex_rd2 == Id1Id2_rt;
       Id2Ex_rtfwwb <= #3 !Id2RRT2_IS_IMM && ExMe_rd2 && ExMe_rd2 == Id1Id2_rt; 
-    end else begin
+    end else if (WBEXFW_INTERLOCK) begin
       Id2Ex_rrs    <= #3 Id2RRS_INTERLOCK_FW;
       Id2Ex_rrt    <= #3 Id2RRT_INTERLOCK_FW;
       Id2Ex_rrt2   <= #3 ExRRT2_IS_IMM ? Id2Ex_rrt2 : Id2RRT_INTERLOCK_FW;
