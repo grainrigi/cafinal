@@ -197,7 +197,6 @@ module m_cached_memory #(
     wire [`DADDR]               prefetch_install_addr;
     wire [APP_DATA_WIDTH-1:0]   prefetch_install_data;
 
-    wire                        cache_hit;
     wire                        cache_read_hit;
     wire [APP_DATA_WIDTH-1:0]   cache_dout;
     wire [1:0]                  cache_bindex;
@@ -253,14 +252,13 @@ module m_cached_memory #(
     end
 
     assign dmem_stall = (
-       C_TASK_WAIT_CALIB
-    || w_read_miss
-    || prev_task == TASK_READ_ISSUE
-    || prev_task == TASK_READ_ISSUE_STALL
-    || prev_task == TASK_READ_WAIT
-    || C_TASK_SAVE_DRAM_RESULT
-    || C_TASK_WRITE_ISSUE && (dmem_ren || dmem_wen)
-    || C_TASK_WRITE_ISSUE_STALL
+       !dram_init_calib_complete
+    || (prev_task == TASK_CACHE_READ && !cache_read_hit)
+    || (prev_task == TASK_READ_ISSUE)
+    || (prev_task == TASK_READ_ISSUE_STALL)
+    || (prev_task == TASK_READ_WAIT)
+    || (!dram_busy && (prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL) && (dmem_ren || dmem_wen))
+    || (dram_busy && (prev_task == TASK_WRITE_THROUGH || prev_task == TASK_WRITE_ISSUE_STALL))
     );
 
     assign dram_ren = C_TASK_READ_ISSUE || prefetch_issuing;
@@ -328,7 +326,6 @@ module m_cached_memory #(
     ) cache (
       .i_clk(clk),
       .i_addr(dmem_addr),
-      .o_hit(cache_hit),
       .i_we(dmem_wen != 0),
       .o_we(cache_write_now),
       .i_data(dmem_din),

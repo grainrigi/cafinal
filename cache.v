@@ -25,7 +25,6 @@ module m_cache #(
 )(
   input  wire          i_clk,   // clock
   input  wire [`DADDR] i_addr,  // 32bit-data operation address (read/write)
-  output wire          o_hit,   // 
   input  wire          i_we,    // write enable
   output wire          o_we,    // write enable
   input  wire [31:0]   i_data,  // write data
@@ -51,7 +50,6 @@ module m_cache #(
   wire                   w_hit    = w_valid && (w_etag == w_itag);
 
   always @(posedge i_clk) o_rhit <= w_hit;
-  assign o_hit = w_hit;
 
   // delay write
   reg                    r_we;
