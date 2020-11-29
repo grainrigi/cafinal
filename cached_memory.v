@@ -589,9 +589,15 @@ module m_prefetcher #(
       r_data[w_notify_addr_bindex*32 +: 32] <= i_notify_data;
       r_mask[w_notify_addr_bindex]          <= 1;
     end else if (w_end_of_fetch) begin
-      r_addr      <= r_addr_next;
-      r_addr_next <= r_addr_next + 5'b10000;
       r_mask      <= 0;
+    end
+
+    if (w_end_of_fetch) begin
+      r_addr      <= r_addr_next;
+    end
+
+    if (w_end_of_fetch) begin
+      r_addr_next <= r_addr_next + 5'b10000;
       r_disable_current <= 0;
     end else if (i_notify_read && w_tag_mismatch) begin
       r_disable_current <= 1;
