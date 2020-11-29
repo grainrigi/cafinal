@@ -20,66 +20,53 @@ module m_cache_store #(
   always @(posedge i_clk) o_data <= cm_ram[i_rindex];
 endmodule
 
-module m_cache 
-(
-  input  wire         i_clk,   // clock
-  input  wire [`EADDR] i_raddr, // read address
-  input  wire [`EADDR] i_waddr, // write address
-  input  wire         i_we,    // write enable
-  input  wire [31:0]  i_data,  // write data
-  output reg  [127:0] o_data,  // read data
-  input  wire         i_bwe,   // write enable (cache install)
-  input  wire [127:0] i_bdata, // write data (cache install)
-  output reg          o_hit,   // cache hit (read)
-  output wire [1:0]   o_bindex
+module m_cache #(
+  parameter INDEX_WIDTH = 8
+)(
+  input  wire          i_clk,   // clock
+  input  wire [`EADDR] i_addr,  // 32bit-data operation address (read/write)
+  output wire          o_hit,   // 
+  input  wire          i_we,    // write enable
+  input  wire [31:0]   i_data,  // write data
+  output reg  [127:0]  o_data,  // read data
+  output reg           o_rhit,  // read cache hit (o_data is valid or not)
+  output wire [1:0]    o_bindex,// read data block index
+  input  wire          i_ie,    // install enable
+  input  wire [`EADDR] i_iaddr, // install address (4 lsb is ignored)
+  input  wire [127:0]  i_idata  // write data (cache install)
 );
-  localparam INDEX_WIDTH = 8;
   localparam NUM_ENTRIES = 2 ** INDEX_WIDTH;
   localparam TAG_WIDTH   = `EADDR_WIDTH - INDEX_WIDTH - 4;
   localparam EWIDTH = 1 + TAG_WIDTH + 128;
   reg  [TAG_WIDTH:0] meta_ram[0:NUM_ENTRIES-1]; // 256 entries
 
-  // read no delay (for hit judge)
-  wire [TAG_WIDTH-1:0]   w_ritag   = i_raddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
-  wire [INDEX_WIDTH-1:0] w_rindex  = i_raddr[INDEX_WIDTH+3:4];                      // entry index
-  wire [1:0]             w_rbindex = i_raddr[3:2];                                  // block index
-  wire [TAG_WIDTH:0]     w_wmeta   = meta_ram[w_rindex];
-  wire [TAG_WIDTH-1:0]   w_retag   = w_wmeta[TAG_WIDTH-1:0];
-  wire                   w_rvalid  = w_wmeta[TAG_WIDTH];
+  // 32bit-data operation data
+  wire [TAG_WIDTH-1:0]   w_itag   = i_addr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [INDEX_WIDTH-1:0] w_index  = i_addr[INDEX_WIDTH+3:4];                      // entry index
+  wire [1:0]             w_bindex = i_addr[3:2];                                  // block index
+  wire [TAG_WIDTH:0]     w_meta   = meta_ram[w_index];
+  wire [TAG_WIDTH-1:0]   w_etag   = w_meta[TAG_WIDTH-1:0];
+  wire                   w_valid  = w_meta[TAG_WIDTH];
+  wire                   w_hit    = w_valid && (w_etag == w_itag);
 
-  always @(posedge i_clk) o_hit <= w_rvalid && (w_retag == w_ritag);
+  always @(posedge i_clk) o_rhit <= w_hit;
+  assign o_hit = w_hit;
 
-  // write no delay (for cache install)
-  wire [TAG_WIDTH-1:0]   w_witag   = i_waddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
-  wire [INDEX_WIDTH-1:0] w_windex  = i_waddr[INDEX_WIDTH+3:4];                      // entry index
-
-  // read delay (for simultaneous read and install)
-  reg  [TAG_WIDTH:0]     r_rmeta;
-  reg  [1:0]             r_drbindex = 0;
-  assign o_bindex = r_drbindex;
-
-  // write delay (for sw)
-  reg  [`EADDR]           r_waddr;
-  reg  [31:0]            r_wdata;
-  reg                    r_we;
-  reg                    r_iwe;
-  wire [TAG_WIDTH-1:0]   w_dwitag   = r_waddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];
-  wire [INDEX_WIDTH-1:0] w_dwindex  = r_waddr[INDEX_WIDTH+3:4];
-  wire [1:0]             w_dwbindex = r_waddr[3:2];
-
-  reg  [TAG_WIDTH:0]   r_wmeta;
-  wire [TAG_WIDTH-1:0] w_dwetag = r_wmeta[TAG_WIDTH-1:0];
-  wire                 w_dwhit  = r_wmeta[TAG_WIDTH] && (w_dwetag == w_dwitag);
+  // cache install
+  wire [TAG_WIDTH-1:0]   w_iitag   = i_iaddr[`EADDR_WIDTH-1:`EADDR_WIDTH-TAG_WIDTH];  // tag
+  wire [INDEX_WIDTH-1:0] w_iindex  = i_iaddr[INDEX_WIDTH+3:4];                      // entry index
 
   // simultaneous read and install handling
-  wire w_read_installing = (i_bwe) && (w_witag == w_ritag) && (w_windex == w_rindex);
+  reg  [1:0]             r_dbindex = 0;
+  assign o_bindex = r_dbindex;
+  wire w_read_installing = (i_ie) && (w_iitag == w_itag) && (w_iindex == w_index);
   reg  r_read_installing;
-  reg [127:0] r_bdata;
+  reg [31:0] r_installed_data;
 
   integer i;
   always @(*) begin
     for (i = 0; i < 4; i = i + 1) begin
-      o_data[i*32 +: 32] = (r_read_installing && r_drbindex == i) ? r_bdata[i*32 +: 32] : w_drdata[i*32 +: 32];
+      o_data[i*32 +: 32] = (r_read_installing && r_dbindex == i) ? r_installed_data : w_drdata[i*32 +: 32];
     end
   end
 
@@ -88,28 +75,29 @@ module m_cache
   genvar g;
   generate
   for (g = 0; g < 4; g = g + 1) begin: data_ram
+    wire this_we = (w_bindex == g) && i_we && w_hit;
     m_cache_store #(
       .INDEX_WIDTH(INDEX_WIDTH)
     ) store (
       .i_clk(i_clk),
-      .i_rindex(w_rindex),
-      .i_windex((i_bwe) ? w_windex : w_dwindex),
-      .i_we(((w_dwbindex == g) && r_we && w_dwhit) || i_bwe),
-      .i_data((i_bwe) ? i_bdata[g*32 +: 32] : r_wdata),
+      .i_rindex(w_index),
+      .i_windex((i_ie) ? w_iindex : w_index),
+      .i_we(this_we || i_ie),
+      .i_data((i_ie) ? i_idata[g*32 +: 32] : i_data),
       .o_data(w_drdata[g*32 +: 32])
     );
   end
   endgenerate
 
-  always @(posedge i_clk) if (i_bwe) meta_ram[w_windex] <= {1'b1, w_witag};
+  always @(posedge i_clk) if (i_ie) meta_ram[w_iindex] <= {1'b1, w_iitag};
   always @(posedge i_clk) begin
-     r_wmeta <= meta_ram[w_windex];
-     r_waddr <= i_waddr;
-     r_wdata <= i_data;
-     r_we <= i_we;
+     if (i_we && i_ie) begin
+       $write("simultaneous write and install is not permitted.\n");
+       #1000 $finish();
+     end
      r_read_installing <= w_read_installing;
-     r_drbindex <= w_rbindex;
-     r_bdata <= i_bdata;
+     r_dbindex <= w_bindex;
+     r_installed_data <= i_idata[w_bindex*32 +: 32];
   end
   
   initial begin
