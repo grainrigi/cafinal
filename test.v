@@ -116,11 +116,11 @@ module m_top #(
          // user design interface signals
          .i_dmem_init_done(dmem_init_done),
          .i_dmem_init_wen(dmem_init_wen),
-         .i_dmem_init_addr(dmem_init_addr),
+         .i_dmem_init_addr(dmem_init_addr[`DSLICE]),
          .i_dmem_init_data(dmem_init_din),
          .i_dmem_ren(dmem_ren),
          .i_dmem_wen(dmem_wen),
-         .i_dmem_addr(dmem_addr),
+         .i_dmem_addr(dmem_addr[`DSLICE]),
          .i_dmem_data(dmem_din),
          .o_dmem_data(dmem_dout),
          .o_dmem_stall(dmem_stall));

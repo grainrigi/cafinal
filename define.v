@@ -27,11 +27,11 @@
   `define ISLICE 8:0
   `define PC_STRIDE 1
 `endif
-`define DADDR  29:0                 // Address Range of 32bit
-`define DADDR_WIDTH 30
+`define DADDR  23:0                 // Address Range of 32bit
+`define DADDR_WIDTH 24
 `define EADDR  31:0
 `define EADDR_WIDTH 32
-`define DSLICE 31:2
+`define DSLICE 23:0
 
 /* Instruction Attribute Definition                                                                   */
 /******************************************************************************************************/

@@ -135,11 +135,11 @@ module m_cached_memory #(
      // user design interface signals
      input  wire                         i_dmem_init_done,
      input  wire [3:0]                   i_dmem_init_wen,
-     input  wire [31:0]                  i_dmem_init_addr,
+     input  wire [`DADDR]                i_dmem_init_addr,
      input  wire [31:0]                  i_dmem_init_data,
      input  wire                         i_dmem_ren,
      input  wire [3:0]                   i_dmem_wen,
-     input  wire [31:0]                  i_dmem_addr,
+     input  wire [`DADDR]                i_dmem_addr,
      input  wire [31:0]                  i_dmem_data,
      output wire [31:0]                  o_dmem_data,
      output wire                         o_dmem_stall);
@@ -170,7 +170,7 @@ module m_cached_memory #(
 
     wire                        dram_ren;
     wire                        dram_wen;
-    wire [31:0]                 dram_addr_org;
+    wire [`DADDR]               dram_addr_org;
     wire [APP_ADDR_WIDTH-2 : 0] dram_addr;
     wire [2:0]                  dram_addr_column_offset;
     reg  [APP_DATA_WIDTH-1 : 0] dram_din;
@@ -191,10 +191,10 @@ module m_cached_memory #(
     wire                        read_get_prefetch_coalesce;
     wire                        prefetch_issuable;
     wire                        prefetch_issuing;
-    wire [31:0]                 prefetch_addr;
+    wire [`DADDR]               prefetch_addr;
     wire                        prefetch_installable;
     wire                        prefetch_installing;
-    wire [31:0]                 prefetch_install_addr;
+    wire [`DADDR]               prefetch_install_addr;
     wire [APP_DATA_WIDTH-1:0]   prefetch_install_data;
 
     wire                        cache_hit;
@@ -202,7 +202,7 @@ module m_cached_memory #(
     wire [APP_DATA_WIDTH-1:0]   cache_dout;
     wire [1:0]                  cache_bindex;
     wire                        cache_install;
-    wire [31:0]                 cache_install_addr;
+    wire [`DADDR]               cache_install_addr;
     wire [APP_DATA_WIDTH-1:0]   cache_install_data;
     wire                        cache_write_now;
 
@@ -210,7 +210,7 @@ module m_cached_memory #(
 
     wire                        dmem_ren;
     wire [3:0]                  dmem_wen;
-    wire [31:0]                 dmem_addr;
+    wire [`DADDR]               dmem_addr;
     wire [31:0]                 dmem_din;
     reg  [31:0]                 dmem_dout;
     wire                        dmem_stall;
@@ -218,7 +218,7 @@ module m_cached_memory #(
 
     reg                         dmem_ren_reg;
     reg  [3:0]                  dmem_wen_reg;
-    reg  [31:0]                 dmem_addr_reg;
+    reg  [`DADDR]               dmem_addr_reg;
     reg  [31:0]                 dmem_din_reg;
     reg                         dmem_use_dramout;
 
@@ -266,7 +266,7 @@ module m_cached_memory #(
     assign dram_ren = C_TASK_READ_ISSUE || prefetch_issuing;
     assign dram_wen = C_TASK_WRITE_ISSUE;
     assign dram_addr_org = (C_TASK_READ_ISSUE || C_TASK_WRITE_ISSUE) ? dmem_addr_reg : prefetch_addr;
-    assign dram_addr = {dram_addr_org[APP_ADDR_WIDTH-1 : 4], 3'b000};
+    assign dram_addr = {4'd0, dram_addr_org[APP_ADDR_WIDTH-1 : 4], 3'b000};
     assign dram_addr_column_offset = dram_addr_org[3:1];
 
     always @(*) begin
@@ -493,11 +493,11 @@ module m_prefetcher #(
 
   input  wire                      i_issuable,     // read issue on next posedge is permitted 
   output wire                      o_issuing,      // issue address is valid
-  output wire [31:0]               o_issue_addr,   // issue address (held until the prefething of the address completes)
+  output wire [`DADDR]             o_issue_addr,   // issue address (held until the prefething of the address completes)
 
   input  wire                      i_notify_read,  // read was issued to cache in the previous posedge
   input  wire                      i_notify_write, // write is being issued from processor
-  input  wire [31:0]               i_notify_addr, // notify address
+  input  wire [`DADDR]             i_notify_addr, // notify address
   input  wire [31:0]               i_notify_data,  // notify data (write)
   input  wire                      i_notify_hit,   // the block of i_notify_raddr exists in cache or not
   output wire                      o_yield_read,   // 
@@ -507,10 +507,10 @@ module m_prefetcher #(
 
   input  wire                      i_installable,  // cache install on next posedge is permitted
   output wire                      o_installing,   // install addr/data is valid
-  output wire [31:0]               o_install_addr, // install addr
+  output wire [`DADDR]             o_install_addr, // install addr
   output wire [APP_DATA_WIDTH-1:0] o_install_data  // install data
 );
-  localparam TAG_WIDTH   = `EADDR_WIDTH - INDEX_WIDTH - 4;
+  localparam TAG_WIDTH   = `DADDR_WIDTH - INDEX_WIDTH - 4;
 
   localparam TASK_WAIT_NEXT_ISSUE = 3'b000;
   localparam TASK_ISSUE           = 3'b001;
@@ -536,12 +536,12 @@ module m_prefetcher #(
   wire                     w_accessing_prefetchee;
   wire                     w_tag_mismatch;
 
-  assign w_notify_addr_norm   = i_notify_addr[31:4];
-  assign w_notify_addr_tag    = i_notify_addr[`EADDR_WIDTH-1 -: TAG_WIDTH];
+  assign w_notify_addr_norm   = i_notify_addr[`DADDR_WIDTH-1:4];
+  assign w_notify_addr_tag    = i_notify_addr[`DADDR_WIDTH-1 -: TAG_WIDTH];
   assign w_notify_addr_bindex = i_notify_addr[3:2];
   
-  assign w_addr_norm = r_addr[31:4];
-  assign w_addr_tag  = r_addr[`EADDR_WIDTH-1 -: TAG_WIDTH];
+  assign w_addr_norm = r_addr[`DADDR_WIDTH-1:4];
+  assign w_addr_tag  = r_addr[`DADDR_WIDTH-1 -: TAG_WIDTH];
   assign w_accessing_prefetchee = w_notify_addr_norm == w_addr_norm;
   assign w_tag_mismatch         = w_notify_addr_tag != w_addr_tag;
   assign o_yield_read   = i_notify_read && !i_notify_hit && w_accessing_prefetchee && C_TASK_READ_WAIT;
