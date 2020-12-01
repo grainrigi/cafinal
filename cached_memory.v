@@ -408,7 +408,7 @@ module m_cached_memory #(
     wire C_TASK_READ_ISSUE_STALL   = dram_busy && w_read_issue_next;
     wire C_TASK_READ_WAIT          = prev_task == TASK_READ_ISSUE || read_get_prefetch_coalesce || (!read_get_valid && prev_task == TASK_READ_WAIT);
     wire C_TASK_READ_ISSUE         = !dram_busy && w_read_issue_next;
-    wire C_TASK_WRITE_ISSUE        = !dram_busy && w_write_issue_next;
+    wire C_TASK_WRITE_ISSUE        = !dram_busy && w_write_issue_next; // this bit and C_TASK_WRITE_THROUGH would assert simultaneously
     wire C_TASK_COMPLETE_READ      = prev_task == TASK_SAVE_DRAM_RESULT;
     wire C_TASK_SAVE_DRAM_RESULT   = read_get_valid && prev_task == TASK_READ_WAIT;
     wire w_other                   = !(
@@ -417,7 +417,6 @@ module m_cached_memory #(
       || C_TASK_READ_ISSUE_STALL
       || C_TASK_READ_WAIT
       || C_TASK_READ_ISSUE
-      || C_TASK_WRITE_ISSUE
       || C_TASK_COMPLETE_READ
       || C_TASK_SAVE_DRAM_RESULT
     );
@@ -441,7 +440,7 @@ module m_cached_memory #(
       else if (C_TASK_READ_ISSUE_STALL   ) prev_task <= TASK_READ_ISSUE_STALL;
       else if (C_TASK_READ_WAIT          ) prev_task <= TASK_READ_WAIT;
       else if (C_TASK_READ_ISSUE         ) prev_task <= TASK_READ_ISSUE;
-      else if (C_TASK_WRITE_ISSUE        ) prev_task <= TASK_WRITE_ISSUE;
+      // else if (C_TASK_WRITE_ISSUE        ) prev_task <= TASK_WRITE_ISSUE;
       else if (C_TASK_COMPLETE_READ      ) prev_task <= TASK_COMPLETE_READ;
       else if (C_TASK_SAVE_DRAM_RESULT   ) prev_task <= TASK_SAVE_DRAM_RESULT;
       else                                 prev_task <= TASK_IDLE;
